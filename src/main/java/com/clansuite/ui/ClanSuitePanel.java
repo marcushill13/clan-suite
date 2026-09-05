@@ -1101,14 +1101,17 @@ public class ClanSuitePanel extends PluginPanel
 	{
 		Challenge challenge = membership.challenge;
 
-		JPanel card = new JPanel(new BorderLayout(4, 0));
-		card.setBackground(Theme.CARD);
-		card.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-		card.setAlignmentX(Component.LEFT_ALIGNMENT);
+		// The same strip every other list has: green while it is running, gold before it starts, grey
+		// once it is over. A challenge is a PvM event; it reads like one here too.
+		long now = System.currentTimeMillis();
+		JPanel card = Cards.paddedAccentCard(challenge.isRunning(now)
+			? Theme.LIVE
+			: challenge.hasEnded(now) ? Theme.NEUTRAL : Theme.GOLD);
+		card.setLayout(new BorderLayout(4, 0));
 
 		JPanel text = new JPanel();
 		text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-		text.setBackground(card.getBackground());
+		text.setOpaque(false);
 
 		JLabel name = new JLabel(challenge.getName());
 		name.setFont(Theme.heading());
@@ -1117,7 +1120,7 @@ public class ClanSuitePanel extends PluginPanel
 		text.add(name);
 
 		text.add(Cards.mutedInRow(challenge.getBoss()));
-		text.add(Cards.mutedInRow(Countdown.describe(challenge, System.currentTimeMillis())));
+		text.add(Cards.mutedInRow(Countdown.describe(challenge, now)));
 
 		// Which side of the challenge this account is on, said on the card rather than only inside.
 		// Being both is normal now: you make a challenge, then join it on the account you play.

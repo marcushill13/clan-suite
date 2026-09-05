@@ -56,9 +56,16 @@ members sitting on nought. Staff can mark somebody present and correct a score b
 a stopgap for socials: nothing a game client can read proves anybody turned up to a hide and seek, and
 nothing ever will.
 
-What is not built yet: nothing is counted automatically. The events know what they are for, and the
-trackers that watch for it come next, one activity at a time. Boss of the Week tracks as it always
-has.
+Scoring is the service's, not the plugin's. The plugin reports what it saw — a kill, a drop, an amount
+of experience — and the event's own rules decide what that was worth. A rule is a metric, optionally
+what it is about, and either a flat value or a threshold: every ten kills is worth one, a Vorki is
+worth five hundred, a death costs five. Scores are worked out from everything reported rather than
+added up as it arrives, so a threshold counts the total rather than each report, and fixing a points
+value halfway through fixes the whole event rather than the rest of it.
+
+What is not built yet: the trackers that do the reporting. The wire format, the rules and the
+leaderboard all work and are tested; what fills them in for a raid night or a skilling week comes
+next, one activity at a time. Boss of the Week tracks as it always has.
 
 # Boss of the Week
 

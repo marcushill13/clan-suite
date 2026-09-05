@@ -1,5 +1,6 @@
 package com.clansuite.event.data;
 
+import com.clansuite.ui.Theme;
 import java.awt.Color;
 import java.util.Locale;
 
@@ -11,12 +12,12 @@ import java.util.Locale;
  */
 public enum EventCategory
 {
-	PVM("PvM", new Color(214, 96, 84)),
-	RAIDS("Raids", new Color(168, 116, 216)),
-	SKILLING("Skilling", new Color(88, 168, 120)),
-	MINIGAME("Minigame", new Color(92, 148, 208)),
-	SOCIAL("Social", new Color(226, 168, 76)),
-	CUSTOM("Custom", new Color(140, 144, 158));
+	PVM("PvM", Theme.PVM),
+	RAIDS("Raids", Theme.RAIDS),
+	SKILLING("Skilling", Theme.SKILLING),
+	MINIGAME("Minigame", Theme.MINIGAME),
+	SOCIAL("Social", Theme.SOCIAL),
+	CUSTOM("Custom", Theme.NEUTRAL);
 
 	private final String label;
 	private final Color colour;

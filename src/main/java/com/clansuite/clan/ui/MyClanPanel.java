@@ -19,6 +19,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
@@ -175,7 +176,7 @@ public class MyClanPanel extends JPanel
 
 		for (ClanApplication application : applications)
 		{
-			JPanel card = Cards.card();
+			JPanel card = Cards.paddedAccentCard(Theme.GOLD);
 			card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
 
 			card.add(Cards.headline(application.getRsn()));
@@ -266,14 +267,19 @@ public class MyClanPanel extends JPanel
 	private JPanel memberRow(
 		ClanMember member, Role yours, Set<String> capabilities, String yourRsn, Actions actions)
 	{
-		JPanel card = Cards.card();
+		Role theirRank = member.role();
+		JPanel card = Cards.paddedAccentCard(theirRank == null ? Theme.TEXT_MUTED : theirRank.getColour());
 		card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
 
 		boolean you = member.getRsn().equalsIgnoreCase(yourRsn == null ? "" : yourRsn);
 		card.add(Cards.headline(member.getRsn() + (you ? " (you)" : "")));
 
-		Role theirs = member.role();
-		card.add(Cards.body(theirs == null ? member.getRole() : theirs.getLabel()));
+		Role theirs = theirRank;
+		JLabel rank = new JLabel(theirs == null ? member.getRole() : theirs.getLabel());
+		rank.setFont(Theme.body());
+		rank.setForeground(theirs == null ? Theme.TEXT_MUTED : theirs.getColour());
+		rank.setAlignmentX(Component.LEFT_ALIGNMENT);
+		card.add(rank);
 
 		boolean above = yours != null && theirs != null && yours.outranks(theirs);
 		if (!above || you)

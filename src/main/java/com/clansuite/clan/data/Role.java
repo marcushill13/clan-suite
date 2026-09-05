@@ -1,5 +1,7 @@
 package com.clansuite.clan.data;
 
+import com.clansuite.ui.Theme;
+import java.awt.Color;
 import java.util.Locale;
 
 /**
@@ -12,22 +14,30 @@ import java.util.Locale;
  */
 public enum Role
 {
-	OWNER("Owner"),
-	DEPUTY("Deputy owner"),
-	ADMIN("Administrator"),
-	MODERATOR("Moderator"),
-	MEMBER("Member");
+	OWNER("Owner", Theme.GOLD),
+	DEPUTY("Deputy owner", Theme.SOCIAL),
+	ADMIN("Administrator", Theme.RAIDS),
+	MODERATOR("Moderator", Theme.MINIGAME),
+	MEMBER("Member", Theme.NEUTRAL);
 
 	private final String label;
+	private final Color colour;
 
-	Role(String label)
+	Role(String label, Color colour)
 	{
 		this.label = label;
+		this.colour = colour;
 	}
 
 	public String getLabel()
 	{
 		return label;
+	}
+
+	/** The strip down the left of this person's row, so a roster reads by rank at a glance. */
+	public Color getColour()
+	{
+		return colour;
 	}
 
 	/** What the service calls it. */

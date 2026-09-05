@@ -30,7 +30,7 @@ import javax.swing.JTextField;
 public class ClanHubPanel extends JPanel
 {
 	/** Warm amber rather than the alarm red, because full is a fact about a clan, not a fault. */
-	private static final Color FULL = new Color(214, 148, 64);
+	private static final Color FULL = Theme.CAPPED;
 
 	private final JTextField search = Theme.textField(new JTextField());
 	private final JTextField code = Theme.textField(new JTextField());
@@ -97,7 +97,11 @@ public class ClanHubPanel extends JPanel
 
 	private JPanel clanRow(Clan clan, Consumer<Clan> onApply)
 	{
-		JPanel card = Cards.card();
+		// The strip says what the button would: green if they can take you, amber if they are full,
+		// grey if they are not looking. Readable before any of the words are.
+		JPanel card = Cards.paddedAccentCard(clan.isFull()
+			? FULL
+			: clan.isApplicationsOpen() ? Theme.LIVE : Theme.NEUTRAL);
 		card.setLayout(new BorderLayout(6, 0));
 
 		JPanel text = new JPanel();

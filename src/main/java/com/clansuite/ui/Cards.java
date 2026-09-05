@@ -80,6 +80,24 @@ public final class Cards
 	}
 
 	/**
+	 * The row every list in the plugin is made of: a coloured strip down the left, and room to breathe.
+	 * <p>
+	 * The colour always means something — the kind of event, somebody's rank, whether a clan can take
+	 * anybody — so that a list can be read at a glance before any of the words are.
+	 */
+	public static JPanel paddedAccentCard(Color accent)
+	{
+		JPanel card = new JPanel();
+		card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+		card.setBackground(Theme.CARD);
+		card.setAlignmentX(Component.LEFT_ALIGNMENT);
+		card.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, ACCENT, 0, 0, accent),
+			BorderFactory.createEmptyBorder(8, 8, 8, 8)));
+		return card;
+	}
+
+	/**
 	 * Section label — small, uppercase, muted. Used to break the panel into scannable groups.
 	 */
 	public static JLabel sectionLabel(String text)

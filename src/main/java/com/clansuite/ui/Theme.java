@@ -35,6 +35,24 @@ public final class Theme
 	/** For a challenge that is live right now. */
 	public static final Color LIVE = new Color(93, 200, 120);
 
+	/**
+	 * The colour language.
+	 * <p>
+	 * Every list in the plugin puts a coloured strip down the left of each row, and the colour always
+	 * means the same thing: what kind of event it is, what rank somebody holds, whether a clan can take
+	 * anybody. Kept together here so the meanings cannot drift apart across nine screens, and so the
+	 * calendar the clan posts each month can be drawn in the same colours people saw all week.
+	 */
+	public static final Color PVM = new Color(214, 96, 84);
+	public static final Color RAIDS = new Color(168, 116, 216);
+	public static final Color SKILLING = new Color(88, 168, 120);
+	public static final Color MINIGAME = new Color(92, 148, 208);
+	public static final Color SOCIAL = new Color(226, 168, 76);
+	public static final Color NEUTRAL = new Color(140, 144, 158);
+
+	/** A clan that is full, or an event that has been called off. Warm, rather than an alarm. */
+	public static final Color CAPPED = new Color(214, 148, 64);
+
 	public static final Color TEXT = new Color(228, 228, 232);
 	public static final Color TEXT_MUTED = new Color(150, 152, 163);
 

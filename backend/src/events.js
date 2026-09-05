@@ -47,6 +47,12 @@ export async function eventRoutes(request, env, path, helpers)
 		return listEvents(forClan[1].toUpperCase(), request, env, json);
 	}
 
+	const observations = path.match(/^\/v1\/events\/([A-Za-z0-9]+)\/observations$/);
+	if (observations && request.method === 'POST')
+	{
+		return submitObservations(observations[1].toUpperCase(), request, env, helpers);
+	}
+
 	const joining = path.match(/^\/v1\/events\/([A-Za-z0-9]+)\/join$/);
 	if (joining && request.method === 'POST')
 	{
@@ -217,6 +223,14 @@ async function updateEvent(code, request, env, { json, readJson })
 			String(body.timezone ?? event.timezone), JSON.stringify(merged.config),
 			String(body.leaderboard ?? event.leaderboard), status, code)
 		.run();
+
+	if (body.config !== undefined)
+	{
+		// The rules changed, so what everybody has under them changed too. Same reasoning as the
+		// challenge leaderboard: a points value fixed mid-week has to apply to the week, not the rest
+		// of it.
+		await rescoreEveryone(code, env);
+	}
 
 	return json({ event: publicEvent(await loadEvent(code, env)) });
 }
@@ -505,4 +519,207 @@ async function removeParticipant(code, rsn, request, env, json)
 		.bind(code, rsn).run();
 
 	return json({ ok: true });
+}
+
+/** One request cannot carry more than this. Keeps a bad client from flooding the table. */
+const MAX_OBSERVATIONS = 50;
+
+/**
+ * What the plugin saw.
+ *
+ * The client reports what happened — a kill, a drop, an amount of experience — and this works out what
+ * it was worth. That division is the whole trust model, and it is the same one Boss of the Week has
+ * always used: a modified client can claim a kill it never got, but it cannot decide that the kill was
+ * worth five hundred points.
+ *
+ * Each observation carries an id made when it happened, so a resend after a disconnect lands on the
+ * same row rather than a second one. That is what lets the plugin retry blindly.
+ */
+async function submitObservations(code, request, env, { json, readJson })
+{
+	const event = await loadEvent(code, env);
+	if (!event || event.status === 'draft')
+	{
+		return json({ error: 'No event with that code' }, 404);
+	}
+
+	const me = await memberFor(event.clan_code, request, env);
+	if (!me)
+	{
+		return json({ error: 'Only members of the clan can report to its events' }, 403);
+	}
+
+	const body = await readJson(request);
+	const submitted = Array.isArray(body?.observations) ? body.observations : [];
+
+	if (submitted.length > MAX_OBSERVATIONS)
+	{
+		return json({ error: `No more than ${MAX_OBSERVATIONS} at a time` }, 400);
+	}
+
+	const now = Date.now();
+	const writes = [];
+
+	for (const observation of submitted)
+	{
+		if (typeof observation.id !== 'string' || !observation.id)
+		{
+			continue;
+		}
+
+		const occurredAt = Number(observation.occurredAt);
+		if (!Number.isFinite(occurredAt))
+		{
+			continue;
+		}
+
+		// Only what happened while the event was on. A kill from the morning before does not count
+		// towards an evening's mass, however honestly it is reported.
+		if (occurredAt < event.starts_at || occurredAt > event.ends_at)
+		{
+			continue;
+		}
+
+		writes.push(env.DB.prepare(
+			`INSERT OR IGNORE INTO event_observations
+				(id, event_code, rsn, metric, subject, amount, occurred_at, recorded_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+			.bind(
+				observation.id, code, me.rsn,
+				String(observation.metric ?? '').toLowerCase(),
+				observation.subject === undefined || observation.subject === null
+					? null
+					: String(observation.subject),
+				Math.max(0, Math.trunc(Number(observation.amount) || 0)),
+				Math.trunc(occurredAt), now));
+	}
+
+	if (writes.length)
+	{
+		await env.DB.batch(writes);
+	}
+
+	const points = await rescore(code, me.rsn, env, event);
+	return json({ ok: true, taken: writes.length, points });
+}
+
+/**
+ * What somebody has, worked out from everything they have reported and the event's own rules.
+ *
+ * Recomputed from the observations rather than added up as they arrive, for the reason Boss of the
+ * Week learned the hard way: a rule that pays a point per ten kills cannot be applied to each report
+ * as it lands, because three reports of four kills is twelve kills and one point, not zero. Totals
+ * first, rules second.
+ *
+ * It also means the creator can fix a points value mid-event and everybody's score can be rebuilt from
+ * what actually happened.
+ */
+async function rescore(code, rsn, env, event = null)
+{
+	const row = event ?? await loadEvent(code, env);
+	if (!row)
+	{
+		return 0;
+	}
+
+	let rules = [];
+	try
+	{
+		rules = JSON.parse(row.config)?.points ?? [];
+	}
+	catch
+	{
+		rules = [];
+	}
+
+	const totals = await env.DB.prepare(
+		`SELECT metric, subject, SUM(amount) AS amount, COUNT(*) AS times
+		 FROM event_observations WHERE event_code = ? AND rsn = ?
+		 GROUP BY metric, subject`)
+		.bind(code, rsn).all();
+
+	const points = scoreOf(totals.results ?? [], Array.isArray(rules) ? rules : []);
+
+	await env.DB.prepare(
+		`INSERT INTO clan_event_participants (event_code, rsn, joined_at, attended, points, adjustment)
+		 VALUES (?, ?, ?, 0, ?, 0)
+		 ON CONFLICT (event_code, rsn) DO UPDATE SET points = excluded.points`)
+		.bind(code, rsn, Date.now(), points)
+		.run();
+
+	return points;
+}
+
+/**
+ * The rules engine, such as it is.
+ *
+ * A rule names a metric, optionally a subject, and either a flat number of points or a threshold —
+ * "every ten kills is worth one". Deliberately small: the shapes here are the ones a clan actually
+ * writes on a whiteboard, and a rule language nobody asked for would be a week of work and a fortnight
+ * of bugs.
+ *
+ * Exported so the tests can reach it without a database.
+ */
+export function scoreOf(totals, rules)
+{
+	let points = 0;
+
+	for (const rule of rules)
+	{
+		const metric = String(rule?.metric ?? '').toLowerCase();
+		if (!metric)
+		{
+			continue;
+		}
+
+		const subject = rule.subject === undefined || rule.subject === null
+			? null
+			: String(rule.subject).toLowerCase();
+
+		let amount = 0;
+		let times = 0;
+
+		for (const total of totals)
+		{
+			if (String(total.metric).toLowerCase() !== metric)
+			{
+				continue;
+			}
+
+			if (subject !== null && String(total.subject ?? '').toLowerCase() !== subject)
+			{
+				continue;
+			}
+
+			amount += Number(total.amount) || 0;
+			times += Number(total.times) || 0;
+		}
+
+		if (!amount && !times)
+		{
+			continue;
+		}
+
+		const worth = Math.trunc(Number(rule.points) || 0);
+		const per = Math.trunc(Number(rule.per) || 0);
+
+		// A threshold pays on the running total, so four kills reported three times is twelve kills.
+		// Without a threshold, every one of the thing is worth the same: five deaths at minus five is
+		// minus twenty-five.
+		points += per > 0 ? Math.floor(amount / per) * worth : amount * worth;
+	}
+
+	return points;
+}
+
+/** Rebuilds every participant's score, for when the rules themselves change. */
+async function rescoreEveryone(code, env)
+{
+	const rows = await env.DB.prepare(
+		'SELECT DISTINCT rsn FROM event_observations WHERE event_code = ?').bind(code).all();
+
+	for (const row of rows.results ?? [])
+	{
+		await rescore(code, row.rsn, env);
+	}
 }

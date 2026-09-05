@@ -188,7 +188,8 @@ public class EventView extends JPanel
 	private JPanel participantRow(
 		ClanEvent event, EventParticipant participant, String yourRsn, boolean canVerify, Actions actions)
 	{
-		JPanel card = Cards.card();
+		JPanel card = Cards.paddedAccentCard(
+			participant.isAttended() ? Theme.LIVE : Theme.NEUTRAL);
 		card.setLayout(new BorderLayout(6, 0));
 
 		JPanel text = new JPanel();

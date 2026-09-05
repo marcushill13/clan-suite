@@ -137,13 +137,14 @@ public class EventListPanel extends JPanel
 
 	private JPanel eventCard(ClanEvent event, Consumer<ClanEvent> onOpen)
 	{
-		JPanel card = Cards.accentCard(event.category().getColour());
+		// Cancelled events keep their category colour but say so in the corner; a called-off raid night
+		// is still a raid night in the calendar.
+		JPanel card = Cards.paddedAccentCard(event.category().getColour());
 		card.setLayout(new BorderLayout(4, 0));
 
 		JPanel text = new JPanel();
 		text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
 		text.setOpaque(false);
-		text.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 6));
 
 		text.add(Cards.headlineInRow(event.getName()));
 
@@ -165,7 +166,7 @@ public class EventListPanel extends JPanel
 		{
 			JLabel state = new JLabel(event.isDraft() ? "DRAFT" : "CANCELLED");
 			state.setFont(Theme.body());
-			state.setForeground(event.isDraft() ? Theme.GOLD_DIM : Cards.mutedColor());
+			state.setForeground(event.isDraft() ? Theme.GOLD : Theme.CAPPED);
 			state.setAlignmentX(Component.LEFT_ALIGNMENT);
 			text.add(state);
 		}
@@ -177,7 +178,6 @@ public class EventListPanel extends JPanel
 
 		JPanel holder = new JPanel(new BorderLayout());
 		holder.setOpaque(false);
-		holder.setBorder(BorderFactory.createEmptyBorder(6, 0, 6, 6));
 		holder.add(open, BorderLayout.NORTH);
 		card.add(holder, BorderLayout.EAST);
 
