@@ -282,12 +282,27 @@ public class ClanSuitePanel extends PluginPanel
 	 * every action — accepting somebody, saving a setting — and each rebuild has to come back to the
 	 * section it was in.
 	 */
-	private static final String[] SECTIONS = {"My clan", "Clans", "Events"};
+	private static final String[] SECTIONS = {"My clan", "Clans"};
 
 	private int section;
 
 	/** The hub's last search, so a refresh after applying does not throw the query away. */
 	private String hubQuery = "";
+
+	/** A row with one button in it, for the screens that are reached from somewhere rather than chosen. */
+	private Component backTo(String label, Runnable onBack)
+	{
+		JButton back = Cards.button(label);
+		back.addActionListener(event -> onBack.run());
+
+		JPanel row = new JPanel();
+		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+		row.setBackground(Theme.BACKGROUND);
+		row.setAlignmentX(Component.LEFT_ALIGNMENT);
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		row.add(back);
+		return row;
+	}
 
 	private Component nav()
 	{
@@ -304,13 +319,9 @@ public class ClanSuitePanel extends PluginPanel
 			{
 				showMyClan();
 			}
-			else if (index == 1)
-			{
-				showHub(hubQuery);
-			}
 			else
 			{
-				showEvents();
+				showHub(hubQuery);
 			}
 		});
 	}
@@ -343,6 +354,9 @@ public class ClanSuitePanel extends PluginPanel
 			screen.add(Cards.gap(8));
 			screen.add(new TileButton("Find a clan", "See who is recruiting",
 				() -> showHub("")));
+			screen.add(Cards.gap(8));
+			screen.add(new TileButton("Boss of the Week", "Your own challenges, clan or not",
+				this::showList));
 
 			show(screen);
 			return;
@@ -428,6 +442,12 @@ public class ClanSuitePanel extends PluginPanel
 
 		return new MyClanPanel.Actions()
 		{
+			@Override
+			public void openEvents()
+			{
+				showEvents();
+			}
+
 			@Override
 			public void saveSettings(Clan wanted)
 			{
@@ -527,7 +547,7 @@ public class ClanSuitePanel extends PluginPanel
 	 */
 	private void showEvents()
 	{
-		section = 2;
+		section = 0;
 
 		if (!clans.isInAClan())
 		{
@@ -561,6 +581,8 @@ public class ClanSuitePanel extends PluginPanel
 				screen.setBackground(Theme.BACKGROUND);
 				screen.add(nav());
 				screen.add(Cards.gap(12));
+				screen.add(backTo("Back to clan", this::showMyClan));
+				screen.add(Cards.gap(10));
 				screen.add(new EventListPanel(events.getValue(), canManage, this::showCreateEvent,
 					event -> openEvent(event, canManage), this::showEvents, this::showList));
 
@@ -880,7 +902,7 @@ public class ClanSuitePanel extends PluginPanel
 
 	private void showList()
 	{
-		section = 2;
+		section = 0;
 
 		ListView list = new ListView();
 		list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
@@ -888,6 +910,10 @@ public class ClanSuitePanel extends PluginPanel
 
 		list.add(nav());
 		list.add(Cards.gap(12));
+
+		// Reachable from inside a clan and from outside one, so the way back depends on which.
+		list.add(backTo(clans.isInAClan() ? "Back to clan" : "Back", this::showMyClan));
+		list.add(Cards.gap(10));
 
 		JLabel heading = new JLabel("BOSS OF THE WEEK");
 		heading.setFont(Theme.title());

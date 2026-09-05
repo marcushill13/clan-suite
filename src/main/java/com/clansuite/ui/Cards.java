@@ -20,6 +20,7 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JToggleButton;
+import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.SwingConstants;
 import net.runelite.client.ui.FontManager;
 
@@ -342,9 +343,15 @@ public final class Cards
 		{
 			final int index = i;
 			JToggleButton option = new JToggleButton(labels[i]);
+
+			// The client's own look and feel paints a selected button its own way, which swallowed the
+			// label whole: the selected tab came out a solid gold block with nothing written on it.
+			// BasicButtonUI is the one that does as it is told about colour.
+			option.setUI(new BasicButtonUI());
 			option.setFont(FontManager.getRunescapeSmallFont());
 			option.setFocusPainted(false);
-			option.setBorder(BorderFactory.createEmptyBorder(4, 2, 4, 2));
+			option.setOpaque(true);
+			option.setContentAreaFilled(true);
 			option.setSelected(i == selectedIndex);
 			paintToggle(option);
 
@@ -364,14 +371,20 @@ public final class Cards
 		return row;
 	}
 
+	/**
+	 * Selected is gold writing over the card colour with a gold edge under it, rather than dark writing
+	 * on a gold fill. Both read at a glance; only one of them is still legible if something else decides
+	 * what colour the text should be.
+	 */
 	private static void paintToggle(JToggleButton option)
 	{
-		option.setBackground(option.isSelected()
-			? Theme.GOLD
-			: Theme.CARD);
-		option.setForeground(option.isSelected()
-			? Theme.CARD
-			: Theme.TEXT);
+		boolean selected = option.isSelected();
+
+		option.setBackground(selected ? Theme.CARD_HOVER : Theme.CARD);
+		option.setForeground(selected ? Theme.GOLD : Theme.TEXT_MUTED);
+		option.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 0, selected ? 2 : 0, 0, Theme.GOLD),
+			BorderFactory.createEmptyBorder(4, 2, selected ? 2 : 4, 2)));
 	}
 
 	/**

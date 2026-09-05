@@ -7,6 +7,7 @@ import com.clansuite.clan.data.ClanMember;
 import com.clansuite.clan.data.Role;
 import com.clansuite.ui.Cards;
 import com.clansuite.ui.Theme;
+import com.clansuite.ui.TileButton;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -38,6 +39,9 @@ public class MyClanPanel extends JPanel
 {
 	public interface Actions
 	{
+		/** The clan's calendar, which is what most people open the clan to look at. */
+		void openEvents();
+
 		void saveSettings(Clan wanted);
 
 		void decide(String rsn, boolean accept);
@@ -74,6 +78,11 @@ public class MyClanPanel extends JPanel
 		this.applicationsOpen = clan.isApplicationsOpen();
 
 		add(header(clan, yours));
+
+		// First thing under the clan itself, because "what is on" is the question people open this to
+		// answer. Everything below is administration, and administration can wait its turn.
+		add(Cards.gap(10));
+		add(new TileButton("Events", "The clan's calendar", actions::openEvents));
 
 		if (capabilities.contains(Capability.MEMBER_MANAGE))
 		{
