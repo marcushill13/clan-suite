@@ -19,6 +19,7 @@
 
 import { clanRoutes } from './clans.js';
 import { announceDue, eventRoutes } from './events.js';
+import { recordRoutes } from './records.js';
 
 /** Codes people read aloud in Discord, so no O/0 or I/1. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -104,6 +105,12 @@ async function route(request, env)
 	if (event)
 	{
 		return withCors(event);
+	}
+
+	const history = await recordRoutes(request, env, path, { json, readJson, randomToken, randomCode });
+	if (history)
+	{
+		return withCors(history);
 	}
 
 	if (path === '/v1/challenges' && request.method === 'POST')

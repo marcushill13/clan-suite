@@ -209,9 +209,20 @@ public class EventTrackers
 		for (ItemStack stack : items)
 		{
 			String name = itemName(stack);
-			if (name != null)
+			if (name == null)
 			{
-				record(seen, Metric.DROP, name, stack.getQuantity(), now);
+				continue;
+			}
+
+			record(seen, Metric.DROP, name, stack.getQuantity(), now);
+
+			// What it came to, so a loot competition can be scored and "biggest drop" can be asked.
+			// Reported per item rather than per kill, because the record people care about is the item
+			// that dropped rather than the evening's takings.
+			long worth = (long) itemManager.getItemPrice(stack.getId()) * Math.max(1, stack.getQuantity());
+			if (worth > 0)
+			{
+				record(seen, Metric.LOOT, name, (int) Math.min(Integer.MAX_VALUE, worth), now);
 			}
 		}
 	}

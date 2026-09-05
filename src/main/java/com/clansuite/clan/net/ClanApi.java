@@ -3,6 +3,9 @@ package com.clansuite.clan.net;
 import com.clansuite.clan.data.Clan;
 import com.clansuite.clan.data.ClanApplication;
 import com.clansuite.clan.data.ClanMember;
+import com.clansuite.clan.data.ClanRecord;
+import com.clansuite.clan.data.ClanStatistics;
+import com.clansuite.clan.data.PlayerStatistics;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
@@ -214,6 +217,31 @@ public class ClanApi
 				stringOrNull(root, "role"),
 				capabilitiesIn(root));
 		});
+	}
+
+	/** The clan's permanent records — the things people argue about a year later. */
+	public Result<List<ClanRecord>> records(String baseUrl, String code, String token)
+	{
+		return list(authorised(new Request.Builder()
+			.url(url(baseUrl, "v1", "clans", code, "records")).get(), token), "records",
+			new TypeToken<List<ClanRecord>>()
+			{
+			}.getType());
+	}
+
+	public Result<ClanStatistics> statistics(String baseUrl, String code, String token)
+	{
+		return send(authorised(new Request.Builder()
+			.url(url(baseUrl, "v1", "clans", code, "statistics")).get(), token),
+			text -> gson.fromJson(text, ClanStatistics.class));
+	}
+
+	public Result<PlayerStatistics> statisticsFor(
+		String baseUrl, String code, String token, String rsn)
+	{
+		return send(authorised(new Request.Builder()
+			.url(url(baseUrl, "v1", "clans", code, "statistics", rsn)).get(), token),
+			text -> gson.fromJson(text, PlayerStatistics.class));
 	}
 
 	/** Asking to join. No token: the whole point is that they are not in it yet. */

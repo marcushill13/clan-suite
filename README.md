@@ -87,6 +87,23 @@ person rather than tracked, because nothing a game client can see proves anybody
 and seek. Damage and contribution in group content are not tracked either — the client is not told
 enough to be honest about them. Boss of the Week tracks as it always has, on its own screens.
 
+# Records
+
+Every event ends and stops being interesting within the week. What a clan argues about a year later is
+the rest of it: who has turned up to the most, who has never missed one, whose was the biggest drop
+anybody has seen.
+
+Worked out from what was already stored rather than kept as running totals, because a running total is
+a thing that goes quietly wrong — a correction, a deleted event, a recount — and none of this is read
+often enough to be worth that risk.
+
+Only finished events count. An all-time best that changed every time somebody killed something on a
+Tuesday would not be worth reading.
+
+Drops are valued at whatever exchange price the client had at the time, which is a guide rather than a
+valuation: two people reporting the same item on the same evening can differ a little, and an
+untradeable is worth nothing here however much anybody wanted it.
+
 # Discord
 
 A clan can give Clan Suite a webhook address, and it posts for itself: an event going on the calendar,

@@ -18,7 +18,11 @@ import com.clansuite.clan.data.Role;
 import com.clansuite.clan.net.ClanApi;
 import com.clansuite.clan.ui.ClanHubPanel;
 import com.clansuite.clan.ui.CreateClanPanel;
+import com.clansuite.clan.data.ClanRecord;
+import com.clansuite.clan.data.ClanStatistics;
+import com.clansuite.clan.data.PlayerStatistics;
 import com.clansuite.clan.ui.MyClanPanel;
+import com.clansuite.clan.ui.RecordsPanel;
 import com.clansuite.event.data.ClanEvent;
 import com.clansuite.event.data.EventPresets;
 import com.clansuite.event.net.EventApi;
@@ -459,6 +463,12 @@ public class ClanSuitePanel extends PluginPanel
 			}
 
 			@Override
+			public void openRecords()
+			{
+				showRecords();
+			}
+
+			@Override
 			public void saveSettings(Clan wanted, String discordWebhook)
 			{
 				run("Saving…", () -> clanApi.update(url, code, token, wanted, discordWebhook));
@@ -595,6 +605,61 @@ public class ClanSuitePanel extends PluginPanel
 				screen.add(Cards.gap(10));
 				screen.add(new EventListPanel(events.getValue(), canManage, this::showCreateEvent,
 					event -> openEvent(event, canManage), this::showEvents, this::showList));
+
+				show(screen);
+			});
+		});
+	}
+
+	/**
+	 * The clan's records and totals.
+	 * <p>
+	 * Three requests at once because they are three questions about the same thing and no screen wants
+	 * one without the others. Any of them failing leaves that section out rather than the screen.
+	 */
+	private void showRecords()
+	{
+		section = 0;
+
+		if (!clans.isInAClan())
+		{
+			showMyClan();
+			return;
+		}
+
+		ClanStore.Membership mine = clans.membership();
+		String rsn = playerName.get();
+		busy("Reading the records…");
+
+		executor.execute(() ->
+		{
+			ClanApi.Result<List<ClanRecord>> records =
+				clanApi.records(config.serverUrl(), mine.getCode(), mine.getToken());
+			ClanApi.Result<ClanStatistics> statistics =
+				clanApi.statistics(config.serverUrl(), mine.getCode(), mine.getToken());
+			ClanApi.Result<PlayerStatistics> yours = rsn == null
+				? null
+				: clanApi.statisticsFor(config.serverUrl(), mine.getCode(), mine.getToken(), rsn);
+
+			SwingUtilities.invokeLater(() ->
+			{
+				if (!records.ok())
+				{
+					showOffline(records.getError());
+					return;
+				}
+
+				JPanel screen = new JPanel();
+				screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+				screen.setBackground(Theme.BACKGROUND);
+				screen.add(nav());
+				screen.add(Cards.gap(12));
+				screen.add(new RecordsPanel(
+					records.getValue(),
+					statistics.ok() ? statistics.getValue() : null,
+					yours != null && yours.ok() ? yours.getValue() : null,
+					this::showRecords,
+					this::showMyClan));
 
 				show(screen);
 			});

@@ -43,6 +43,9 @@ public class MyClanPanel extends JPanel
 		/** The clan's calendar, which is what most people open the clan to look at. */
 		void openEvents();
 
+		/** What the clan has done, which outlives any one event. */
+		void openRecords();
+
 		/**
 		 * @param discordWebhook a new address, an empty string to turn announcements off, or null to
 		 *                       leave it as it is
@@ -89,6 +92,8 @@ public class MyClanPanel extends JPanel
 		// answer. Everything below is administration, and administration can wait its turn.
 		add(Cards.gap(10));
 		add(new TileButton("Events", "The clan's calendar", actions::openEvents));
+		add(Cards.gap(6));
+		add(new TileButton("Records", "All-time bests and totals", actions::openRecords));
 
 		if (capabilities.contains(Capability.MEMBER_MANAGE))
 		{

@@ -19,6 +19,19 @@ public final class Metric
 	/** One item, of a quantity. The subject is the item's name. */
 	public static final String DROP = "drop";
 
+	/**
+	 * What a drop was worth, in coins, at the prices the client had.
+	 * <p>
+	 * Reported alongside the drop rather than instead of it, because they answer different questions:
+	 * how many of a thing somebody got, and how much it came to. Without this "biggest drop of the
+	 * year" is not a question anybody can ask, and a loot competition cannot be scored at all.
+	 * <p>
+	 * A guide rather than a valuation. It is the exchange price the client happened to have, so two
+	 * people reporting the same item on the same evening can differ by a little, and an untradeable is
+	 * worth nothing at all here however much anybody wanted it.
+	 */
+	public static final String LOOT = "loot";
+
 	/** Experience gained. The subject is the skill. */
 	public static final String EXPERIENCE = "xp";
 
