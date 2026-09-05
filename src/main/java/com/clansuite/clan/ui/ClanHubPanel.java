@@ -104,11 +104,11 @@ public class ClanHubPanel extends JPanel
 		text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
 		text.setOpaque(false);
 
-		text.add(Cards.headline(clan.getName()));
+		text.add(Cards.headlineInRow(clan.getName()));
 
 		if (!clan.getTagline().isEmpty())
 		{
-			text.add(Cards.muted(clan.getTagline()));
+			text.add(Cards.mutedInRow(clan.getTagline()));
 		}
 
 		JLabel count = new JLabel(clan.membership());

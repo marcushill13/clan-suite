@@ -258,30 +258,23 @@ public class MyClanPanel extends JPanel
 		ClanMember member, Role yours, Set<String> capabilities, String yourRsn, Actions actions)
 	{
 		JPanel card = Cards.card();
-		card.setLayout(new BorderLayout(6, 0));
-
-		JPanel text = new JPanel();
-		text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-		text.setOpaque(false);
+		card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
 
 		boolean you = member.getRsn().equalsIgnoreCase(yourRsn == null ? "" : yourRsn);
-		text.add(Cards.headline(member.getRsn() + (you ? " (you)" : "")));
+		card.add(Cards.headline(member.getRsn() + (you ? " (you)" : "")));
 
 		Role theirs = member.role();
-		text.add(Cards.muted(theirs == null ? member.getRole() : theirs.getLabel()));
-
-		card.add(text, BorderLayout.CENTER);
+		card.add(Cards.body(theirs == null ? member.getRole() : theirs.getLabel()));
 
 		boolean above = yours != null && theirs != null && yours.outranks(theirs);
-
 		if (!above || you)
 		{
-			return card;
+			return fullWidth(card);
 		}
 
-		JPanel controls = new JPanel();
-		controls.setLayout(new BoxLayout(controls, BoxLayout.Y_AXIS));
-		controls.setOpaque(false);
+		// Underneath rather than beside. A sidebar is 225 pixels wide, and a rank picker next to a name
+		// leaves neither of them room: the names came out as "Torn..." and the ranks as "Administra".
+		List<Component> controls = new ArrayList<>();
 
 		if (capabilities.contains(Capability.ROLE_ASSIGN))
 		{
@@ -295,7 +288,22 @@ public class MyClanPanel extends JPanel
 			controls.add(remove);
 		}
 
-		card.add(controls, BorderLayout.EAST);
+		if (!controls.isEmpty())
+		{
+			card.add(Cards.gap(6));
+			card.add(inRow(controls.toArray(new Component[0])));
+		}
+
+		return fullWidth(card);
+	}
+
+	/**
+	 * Makes a card as wide as the panel. Without it a row of nothing but labels is only as wide as its
+	 * longest one, and sits visibly short beside the rows that carry controls.
+	 */
+	private JPanel fullWidth(JPanel card)
+	{
+		card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
 		return card;
 	}
 
@@ -312,7 +320,7 @@ public class MyClanPanel extends JPanel
 
 		JComboBox<Role> picker = Cards.comboBox(offered.toArray(new Role[0]));
 		picker.setSelectedItem(theirs);
-		picker.setMaximumSize(new Dimension(130, 24));
+		picker.setMaximumSize(new Dimension(120, 22));
 
 		picker.addActionListener(event ->
 		{

@@ -60,6 +60,16 @@ public enum Role
 		return null;
 	}
 
+	/**
+	 * The rank as a person says it. Swing asks a combo box's items for this, and without it the picker
+	 * offers DEPUTY and MODERATOR in the enum's own shouting.
+	 */
+	@Override
+	public String toString()
+	{
+		return label;
+	}
+
 	public boolean outranks(Role other)
 	{
 		return other != null && ordinal() < other.ordinal();

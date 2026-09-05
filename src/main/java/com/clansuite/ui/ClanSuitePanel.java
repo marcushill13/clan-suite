@@ -334,7 +334,7 @@ public class ClanSuitePanel extends PluginPanel
 			screen.add(Cards.gap(12));
 			screen.add(new TileButton("Create a clan", "You will be its owner", this::showCreateClan));
 			screen.add(Cards.gap(8));
-			screen.add(new TileButton("Find a clan", "Browse the clans that are recruiting",
+			screen.add(new TileButton("Find a clan", "See who is recruiting",
 				() -> showHub("")));
 
 			show(screen);

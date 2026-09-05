@@ -104,6 +104,21 @@ public final class Cards
 	}
 
 	/**
+	 * A headline for a row that has a button or a badge beside it.
+	 * <p>
+	 * The full-width one does not wrap, so a long clan name runs underneath whatever is to its right
+	 * and is cut off mid-word. This wraps instead, at the width a row actually leaves.
+	 */
+	public static JLabel headlineInRow(String text)
+	{
+		JLabel label = new JLabel("<html><body style='width:105px'>" + escape(text) + "</body></html>");
+		label.setFont(FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 15f));
+		label.setForeground(Theme.GOLD);
+		label.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return label;
+	}
+
+	/**
 	 * A setup or section title — larger than body text so a list of setups scans by name.
 	 */
 	public static JLabel title(String text)
