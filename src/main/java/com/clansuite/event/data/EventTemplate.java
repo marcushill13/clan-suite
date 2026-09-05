@@ -21,35 +21,35 @@ public enum EventTemplate
 {
 	BOSS_OF_THE_WEEK("botw", "Boss of the Week", EventCategory.PVM,
 		"A boss, a week, kills and drops. The one this plugin started as.",
-		"kc", "drops"),
+		Metric.KILL, Metric.DROP),
 
 	BOSS_MASS("boss_mass", "Boss mass", EventCategory.PVM,
 		"Everyone at one boss for an evening. Kills and drops on the night.",
-		"kc", "drops"),
+		Metric.KILL, Metric.DROP),
 
 	KC_COMPETITION("kc_competition", "KC competition", EventCategory.PVM,
 		"Most kills wins. No drop list to argue about.",
-		"kc"),
+		Metric.KILL),
 
 	RAID_NIGHT("raid_night", "Raid night", EventCategory.RAIDS,
 		"Completions, deaths and purples across CoX, ToB or ToA.",
-		"completions", "deaths", "uniques", "time"),
+		Metric.COMPLETION, Metric.DEATH, Metric.DROP),
 
 	SKILL_OF_THE_WEEK("skill_of_the_week", "Skill of the week", EventCategory.SKILLING,
 		"One skill, a week, most experience gained.",
-		"xp"),
+		Metric.EXPERIENCE),
 
 	XP_RACE("xp_race", "XP race", EventCategory.SKILLING,
 		"First to a target, or furthest in the time.",
-		"xp"),
+		Metric.EXPERIENCE),
 
 	MINIGAME("minigame", "Minigame", EventCategory.MINIGAME,
 		"Wintertodt, Tempoross, the Rift — games with their own completions.",
-		"completions"),
+		Metric.COMPLETION),
 
 	SOCIAL("social", "Social", EventCategory.SOCIAL,
 		"Hide and seek, quizzes, scavenger hunts. Marked off by a person.",
-		"attendance"),
+		Metric.ATTENDANCE),
 
 	CUSTOM("custom", "Custom", EventCategory.CUSTOM,
 		"Nothing filled in. Decide the whole thing yourself.");

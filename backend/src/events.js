@@ -146,14 +146,19 @@ async function listEvents(clanCode, request, env, json)
 		return json({ error: 'Only members can see this clan\'s events' }, 403);
 	}
 
+	// Whether the reader is taking part comes back with each event, because the plugin has to know
+	// which events to report to and asking one by one would be a request per event on every login.
 	const rows = can(me.role, 'EVENT_MANAGE')
 		? await env.DB.prepare(
-			'SELECT * FROM clan_events WHERE clan_code = ? ORDER BY starts_at DESC LIMIT ?')
-			.bind(clanCode, LIST_LIMIT).all()
+			`SELECT e.*, p.rsn AS joined_as FROM clan_events e
+			 LEFT JOIN clan_event_participants p ON p.event_code = e.code AND p.rsn = ?
+			 WHERE e.clan_code = ? ORDER BY e.starts_at DESC LIMIT ?`)
+			.bind(me.rsn, clanCode, LIST_LIMIT).all()
 		: await env.DB.prepare(
-			`SELECT * FROM clan_events WHERE clan_code = ? AND status != 'draft'
-			 ORDER BY starts_at DESC LIMIT ?`)
-			.bind(clanCode, LIST_LIMIT).all();
+			`SELECT e.*, p.rsn AS joined_as FROM clan_events e
+			 LEFT JOIN clan_event_participants p ON p.event_code = e.code AND p.rsn = ?
+			 WHERE e.clan_code = ? AND e.status != 'draft' ORDER BY e.starts_at DESC LIMIT ?`)
+			.bind(me.rsn, clanCode, LIST_LIMIT).all();
 
 	return json({ events: (rows.results ?? []).map(publicEvent) });
 }
@@ -349,7 +354,10 @@ function publicEvent(row)
 		leaderboard: row.leaderboard,
 		status: row.status,
 		createdBy: row.created_by,
-		createdAt: row.created_at
+		createdAt: row.created_at,
+
+		// Only ever set on the clan's own listing, where the reader is known.
+		joined: row.joined_as !== undefined ? !!row.joined_as : undefined
 	};
 }
 

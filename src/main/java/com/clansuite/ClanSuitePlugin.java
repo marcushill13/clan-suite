@@ -3,6 +3,9 @@ package com.clansuite;
 import com.clansuite.botw.net.BotwApi;
 import com.clansuite.botw.track.ChallengeStore;
 import com.clansuite.clan.ClanStore;
+import com.clansuite.event.track.EventTrackers;
+import com.clansuite.event.track.ObservationOutbox;
+import com.clansuite.event.track.ObservationSender;
 import com.clansuite.botw.track.EventSender;
 import com.clansuite.botw.track.KillTracker;
 import com.clansuite.botw.track.Outbox;
@@ -49,6 +52,15 @@ public class ClanSuitePlugin extends Plugin
 	private ClanStore clans;
 
 	@Inject
+	private EventTrackers eventTrackers;
+
+	@Inject
+	private ObservationOutbox observations;
+
+	@Inject
+	private ObservationSender observationSender;
+
+	@Inject
 	private Outbox outbox;
 
 	@Inject
@@ -90,9 +102,14 @@ public class ClanSuitePlugin extends Plugin
 		// listening the moment this plugin is switched off.
 		eventBus.register(killTracker);
 
+		// Registered by hand alongside the challenge tracker, so both stop listening the moment this
+		// plugin is switched off.
+		eventBus.register(eventTrackers);
+
 		challenges.load();
 		clans.load();
 		outbox.load();
+		observations.load();
 
 		panel.setPlayerName(this::localPlayerName);
 
@@ -100,6 +117,7 @@ public class ClanSuitePlugin extends Plugin
 		// player pressing anything.
 		sender.setOnSent(panel::onPointsSent);
 		sender.start();
+		observationSender.start();
 
 		// Evidence goes to the creator on a background thread. Best effort by design: the full-size
 		// copy is already on the player's disk, so a failed upload costs a thumbnail rather than proof.
@@ -133,8 +151,13 @@ public class ClanSuitePlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		// One last send on the way out, so a session's last few minutes of skilling are not lost.
+		observationSender.flush();
+		observationSender.stop();
 		sender.stop();
+
 		eventBus.unregister(killTracker);
+		eventBus.unregister(eventTrackers);
 		clientToolbar.removeNavigation(navigationButton);
 	}
 
@@ -170,6 +193,11 @@ public class ClanSuitePlugin extends Plugin
 		challenges.load();
 		clans.load();
 		outbox.load();
+		observations.load();
+
+		// Every skill is announced once on logging in. Without forgetting what they were, arriving on
+		// a second account would look like earning its whole lifetime of experience in a second.
+		eventTrackers.forgetTotals();
 
 		// And the panel has to be told. It is built at start-up, before there is an account, so without
 		// this it goes on showing the empty list it was born with until something else happens to

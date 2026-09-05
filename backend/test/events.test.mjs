@@ -437,3 +437,26 @@ test('the board is ordered by what people have, best first', async () =>
 	assert.deepEqual(board.body.participants.map((p) => p.rsn), ['Organiser', 'Owner', 'Regular']);
 	assert.deepEqual(board.body.participants.map((p) => p.points), [90, 60, 30]);
 });
+
+test('the calendar says which events you are in', async () =>
+{
+	const env = { DB: database() };
+	const clan = await clanWithStaff(env);
+
+	const joined = await call(env, 'POST', `/v1/clans/${clan.code}/events`,
+		{ body: raidNight({ name: 'One I am in', status: 'published' }), token: clan.admin });
+	await call(env, 'POST', `/v1/clans/${clan.code}/events`,
+		{ body: raidNight({ name: 'One I am not', status: 'published' }), token: clan.admin });
+
+	await call(env, 'POST', `/v1/events/${joined.body.event.code}/join`, { token: clan.member });
+
+	const listed = await call(env, 'GET', `/v1/clans/${clan.code}/events`, { token: clan.member });
+	const mine = Object.fromEntries(listed.body.events.map((e) => [e.name, e.joined]));
+
+	assert.equal(mine['One I am in'], true);
+	assert.equal(mine['One I am not'], false);
+
+	// And it is the reader's own membership, not somebody else's.
+	const staffsView = await call(env, 'GET', `/v1/clans/${clan.code}/events`, { token: clan.admin });
+	assert.equal(staffsView.body.events.every((e) => e.joined === false), true);
+});

@@ -122,6 +122,27 @@ public class EventApi
 			.patch(RequestBody.create(JSON, gson.toJson(body))), token));
 	}
 
+	/**
+	 * What the plugin saw, on its way to being scored.
+	 * <p>
+	 * Always safe to retry: every observation carries an id made when it happened, and the service
+	 * ignores one it already has.
+	 */
+	public Result<Integer> report(
+		String baseUrl, String code, String token, List<com.clansuite.event.track.Observation> seen)
+	{
+		JsonObject body = new JsonObject();
+		body.add("observations", gson.toJsonTree(seen));
+
+		return send(authorised(new Request.Builder()
+			.url(url(baseUrl, "v1", "events", code, "observations"))
+			.post(RequestBody.create(JSON, gson.toJson(body))), token), text ->
+		{
+			JsonObject root = gson.fromJson(text, JsonObject.class);
+			return root != null && root.has("points") ? root.get("points").getAsInt() : 0;
+		});
+	}
+
 	/** Signing up. Idempotent: pressing it twice is joining once. */
 	public Result<Boolean> join(String baseUrl, String code, String token)
 	{

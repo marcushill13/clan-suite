@@ -63,9 +63,19 @@ worth five hundred, a death costs five. Scores are worked out from everything re
 added up as it arrives, so a threshold counts the total rather than each report, and fixing a points
 value halfway through fixes the whole event rather than the rest of it.
 
-What is not built yet: the trackers that do the reporting. The wire format, the rules and the
-leaderboard all work and are tested; what fills them in for a raid night or a skilling week comes
-next, one activity at a time. Boss of the Week tracks as it always has.
+The plugin watches the game for the events you have joined and nothing else. Kills, drops, experience,
+deaths and raid completions go up; what any of it is worth is worked out at the other end. Nothing is
+reported for an event you have not joined, and nothing from outside the hours it runs — being in a
+clan that is running a raid night is not agreeing to have your evening counted.
+
+Experience is added up and sent in a lump rather than as it happens, because a skiller gains it several
+times a second. Everything else goes as it happens, through the same outbox the challenges use, so a
+disconnect halfway through a raid costs nothing.
+
+What is not built yet: attendance is the only thing a social event can count, and it is ticked by a
+person rather than tracked, because nothing a game client can see proves anybody turned up to a hide
+and seek. Damage and contribution in group content are not tracked either — the client is not told
+enough to be honest about them. Boss of the Week tracks as it always has, on its own screens.
 
 # Boss of the Week
 

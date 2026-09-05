@@ -38,6 +38,14 @@ public class ClanEvent
 	private String createdBy = "";
 	private long createdAt;
 
+	/**
+	 * Whether the person who asked is taking part.
+	 * <p>
+	 * Only set on a clan's own listing, where the service knows who is asking. It is what the trackers
+	 * read to decide which events a kill should be reported to.
+	 */
+	private boolean joined;
+
 	public EventCategory category()
 	{
 		return EventCategory.of(category);
