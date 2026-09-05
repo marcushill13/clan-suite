@@ -2,6 +2,8 @@ package com.clansuite.event.ui;
 
 import com.clansuite.event.data.ClanEvent;
 import com.clansuite.event.data.EventCategory;
+import com.clansuite.event.data.EventPreset;
+import com.clansuite.event.data.EventPresets;
 import com.clansuite.event.data.EventTemplate;
 import com.clansuite.ui.Cards;
 import com.clansuite.ui.Theme;
@@ -12,6 +14,7 @@ import java.awt.Dimension;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -21,12 +24,15 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 
 /**
- * Setting up an event, from a template.
+ * Setting up an event.
  * <p>
- * The template is picked first and fills in everything it can — the category, and what this sort of
- * event usually counts. All of it stays editable, because a clan's raid night is not everybody's raid
- * night. Times are typed the same way and read in the same timezones as a Boss of the Week challenge,
- * so the two screens do not disagree about what "8pm" means.
+ * The clan's own events are the list: Wintertodt Mass, Forestry Mass, Hide and Seek, the lot. Picking
+ * one fills in the category, what it counts and what things are worth, because a Mahogany Homes mass
+ * has no kill count and never will, and a Forestry mass is mostly about who finds the whistle first.
+ * All of it stays editable — a clan's Wintertodt mass is not everybody's Wintertodt mass.
+ * <p>
+ * Times are typed the same way and read in the same timezones as a Boss of the Week challenge, so the
+ * two screens do not disagree about what "8pm" means.
  * <p>
  * A new event is saved as a draft. Publishing is a separate press once it reads right, so that a
  * half-written event is never on the clan's calendar.
@@ -41,7 +47,10 @@ public class CreateEventPanel extends JPanel
 		"Europe/London", "America/New_York", "America/Los_Angeles", "UTC"
 	};
 
-	private final JComboBox<EventTemplate> template = Cards.comboBox(EventTemplate.values());
+	private final EventPresets presets;
+
+	private final JTextField search = Theme.textField(new JTextField());
+	private final JComboBox<EventPreset> preset = Cards.comboBox(new EventPreset[0]);
 	private final JComboBox<EventCategory> category = Cards.comboBox(EventCategory.values());
 	private final JTextField name = Theme.textField(new JTextField());
 	private final JTextField startsAt = Theme.textField(new JTextField());
@@ -50,8 +59,10 @@ public class CreateEventPanel extends JPanel
 
 	private final JPanel tracked = new JPanel();
 
-	public CreateEventPanel(Consumer<ClanEvent> onCreate, Runnable onCancel)
+	public CreateEventPanel(EventPresets presets, Consumer<ClanEvent> onCreate, Runnable onCancel)
 	{
+		this.presets = presets;
+
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		setBackground(Theme.BACKGROUND);
 
@@ -60,7 +71,9 @@ public class CreateEventPanel extends JPanel
 		add(Cards.muted("It is saved as a draft. Nobody in the clan sees it until you publish it."));
 		add(Cards.gap(12));
 
-		add(Cards.field("Template", template));
+		add(Cards.field("Find an event", search));
+		add(Cards.gap(6));
+		add(Cards.field("Event", preset));
 		add(Cards.gap(4));
 
 		tracked.setLayout(new BoxLayout(tracked, BoxLayout.Y_AXIS));
@@ -92,7 +105,29 @@ public class CreateEventPanel extends JPanel
 
 		add(inRow(create, cancel));
 
-		template.addActionListener(event -> applyTemplate());
+		search.getDocument().addDocumentListener(new javax.swing.event.DocumentListener()
+		{
+			@Override
+			public void insertUpdate(javax.swing.event.DocumentEvent event)
+			{
+				refilter();
+			}
+
+			@Override
+			public void removeUpdate(javax.swing.event.DocumentEvent event)
+			{
+				refilter();
+			}
+
+			@Override
+			public void changedUpdate(javax.swing.event.DocumentEvent event)
+			{
+				refilter();
+			}
+		});
+
+		preset.addActionListener(event -> applyTemplate());
+		refilter();
 
 		LocalDateTime now = LocalDateTime.now();
 		startsAt.setText(now.plusDays(1).withMinute(0).format(ENTERED));
@@ -102,48 +137,71 @@ public class CreateEventPanel extends JPanel
 		applyTemplate();
 	}
 
-	/** Fills in what the chosen template knows, leaving anything already typed alone. */
+	/** Narrows the list as somebody types. Sixty-odd events is too many to scroll past every time. */
+	private void refilter()
+	{
+		List<EventPreset> matches = presets.search(search.getText());
+
+		preset.removeAllItems();
+		for (EventPreset match : matches)
+		{
+			preset.addItem(match);
+		}
+
+		if (!matches.isEmpty())
+		{
+			preset.setSelectedIndex(0);
+		}
+	}
+
+	/**
+	 * Fills the form in from the chosen event, leaving a name somebody has typed themselves alone.
+	 */
 	private void applyTemplate()
 	{
-		EventTemplate chosen = (EventTemplate) template.getSelectedItem();
+		EventPreset chosen = (EventPreset) preset.getSelectedItem();
 		if (chosen == null)
 		{
 			return;
 		}
 
-		category.setSelectedItem(chosen.getCategory());
+		category.setSelectedItem(chosen.category());
 
-		if (name.getText().trim().isEmpty() || isATemplateName())
+		if (name.getText().trim().isEmpty() || isAPresetName())
 		{
-			name.setText(chosen == EventTemplate.CUSTOM ? "" : chosen.getLabel());
+			name.setText(chosen.getName());
 		}
 
 		tracked.removeAll();
-		tracked.add(Cards.muted(chosen.getBlurb()));
+		tracked.add(Cards.muted(chosen.getTrack().isEmpty()
+			? "Counts nothing on its own — decide what it should below, or mark people off by hand."
+			: "Counts: " + String.join(", ", chosen.getTrack())));
 
-		if (!chosen.getTracks().isEmpty())
+		int bounties = chosen.bounties();
+		if (bounties > 0)
 		{
 			tracked.add(Cards.gap(4));
-			tracked.add(Cards.muted("Counts: " + String.join(", ", chosen.getTracks())));
+			tracked.add(Cards.muted(bounties == 1
+				? "One bounty: points to whoever gets there first, and nobody else."
+				: bounties + " bounties: points to whoever gets there first, and nobody else."));
 		}
 
-		if (chosen.isBossOfTheWeek())
+		if (chosen.getNote() != null && !chosen.getNote().isEmpty())
 		{
 			tracked.add(Cards.gap(4));
-			tracked.add(Cards.muted("This one is run as a Boss of the Week challenge, which is set up "
-				+ "on its own screen once the event is saved."));
+			tracked.add(Cards.muted(chosen.getNote()));
 		}
 
 		tracked.revalidate();
 		tracked.repaint();
 	}
 
-	/** Whether the name is one this screen filled in, and so may be replaced by another template's. */
-	private boolean isATemplateName()
+	/** Whether the name is one this screen filled in, and so may be replaced by another event's. */
+	private boolean isAPresetName()
 	{
-		for (EventTemplate other : EventTemplate.values())
+		for (EventPreset other : presets.all())
 		{
-			if (other.getLabel().equals(name.getText().trim()))
+			if (other.getName().equals(name.getText().trim()))
 			{
 				return true;
 			}
@@ -177,31 +235,34 @@ public class CreateEventPanel extends JPanel
 			return;
 		}
 
-		EventTemplate chosen = (EventTemplate) template.getSelectedItem();
+		EventPreset chosen = (EventPreset) preset.getSelectedItem();
 		EventCategory kind = (EventCategory) category.getSelectedItem();
 
 		ClanEvent event = new ClanEvent();
 		event.setName(name.getText().trim());
 		event.setCategory((kind == null ? EventCategory.CUSTOM : kind).wire());
-		event.setTemplate(EventTemplate.idOf(chosen));
+		event.setTemplate(chosen == null ? EventTemplate.idOf(EventTemplate.CUSTOM) : chosen.getId());
 		event.setStartsAt(start);
 		event.setEndsAt(end);
 		event.setTimezone(zone);
 		event.setStatus("draft");
 		event.setLeaderboard("points");
 
-		// What it counts, written down from the template so the trackers have something to read when
-		// they arrive. Editable later; this is the starting point, not the ruling.
+		// What it counts and what things are worth, taken from the event that was picked. The rules go
+		// with it: a Forestry mass without its bounties is not the event anybody meant to run.
 		JsonObject config = new JsonObject();
 		JsonArray tracks = new JsonArray();
+
 		if (chosen != null)
 		{
-			for (String track : chosen.getTracks())
+			for (String track : chosen.getTrack())
 			{
 				tracks.add(track);
 			}
 		}
+
 		config.add("track", tracks);
+		config.add("points", chosen == null ? new JsonArray() : chosen.getRules());
 		event.setConfig(config);
 
 		onCreate.accept(event);

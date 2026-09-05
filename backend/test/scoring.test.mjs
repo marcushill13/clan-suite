@@ -304,3 +304,104 @@ test('a client cannot flood the table', async () =>
 	assert.equal((await call(env, 'POST', `/v1/events/${at.code}/observations`,
 		{ body: { observations: many }, token: at.player })).status, 400);
 });
+
+// ---- bounties ----
+
+test('a bounty is worth its points once, to whoever won it', () =>
+{
+	const rules = [{ kind: 'bounty', metric: 'drop', subject: 'Fox whistle', points: 100 }];
+	const got = totals(['drop', 'Fox whistle', 1, 1]);
+
+	// Won, so it pays — once, however many whistles they went on to find.
+	assert.equal(scoreOf(got, rules, new Set([0])), 100);
+	assert.equal(scoreOf(totals(['drop', 'Fox whistle', 3, 3]), rules, new Set([0])), 100);
+
+	// Not won: the person who came second gets nothing for it, which is the whole point of a bounty.
+	assert.equal(scoreOf(got, rules, new Set()), 0);
+});
+
+test('a bounty sits alongside ordinary rules', () =>
+{
+	const rules = [
+		{ metric: 'xp', per: 100_000, points: 1 },
+		{ kind: 'bounty', metric: 'drop', subject: 'Golden pheasant egg', points: 50 }
+	];
+
+	const got = totals(['xp', 'Woodcutting', 450_000, 60], ['drop', 'Golden pheasant egg', 1, 1]);
+
+	assert.equal(scoreOf(got, rules, new Set([1])), 4 + 50);
+	assert.equal(scoreOf(got, rules, new Set()), 4);
+});
+
+test('the first to it wins, by when it happened rather than when it arrived', async () =>
+{
+	const env = { DB: database() };
+	const at = await running(env, {
+		points: [{ kind: 'bounty', metric: 'drop', subject: 'Fox whistle', points: 100 }]
+	});
+
+	// A second player, so there is somebody to lose the race.
+	await call(env, 'POST', `/v1/clans/${at.clan.code}/applications`, { body: { rsn: 'Rival' } });
+	await call(env, 'POST', `/v1/clans/${at.clan.code}/applications/Rival`,
+		{ body: { decision: 'accept' }, token: at.clan.token });
+	const rival = env.DB.raw.prepare('SELECT token FROM clan_members WHERE clan_code = ? AND rsn = ?')
+		.get(at.clan.code, 'Rival').token;
+
+	const now = Date.now();
+
+	// The rival reports first, but their whistle dropped later.
+	await call(env, 'POST', `/v1/events/${at.code}/observations`, {
+		body: { observations: [seen('drop', 'Fox whistle', 1, now - 60_000)] },
+		token: rival
+	});
+
+	let board = (await call(env, 'GET', `/v1/events/${at.code}/participants`, { token: at.player }))
+		.body.participants;
+	assert.equal(board.find((row) => row.rsn === 'Rival').points, 100);
+
+	// Then the one who actually got there first turns up late, having been offline.
+	await call(env, 'POST', `/v1/events/${at.code}/observations`, {
+		body: { observations: [seen('drop', 'Fox whistle', 1, now - 600_000)] },
+		token: at.player
+	});
+
+	board = (await call(env, 'GET', `/v1/events/${at.code}/participants`, { token: at.player }))
+		.body.participants;
+
+	assert.equal(board.find((row) => row.rsn === 'Player').points, 100, 'the earlier whistle wins');
+	assert.equal(board.find((row) => row.rsn === 'Rival').points, 0,
+		'and the one who was beaten to it loses the points, rather than both being paid');
+});
+
+test('a bounty pays one person, not everybody who managed it', async () =>
+{
+	const env = { DB: database() };
+	const at = await running(env, {
+		points: [
+			{ kind: 'bounty', metric: 'completion', subject: 'Wintertodt', points: 25 },
+			{ metric: 'completion', points: 1 }
+		]
+	});
+
+	await call(env, 'POST', `/v1/clans/${at.clan.code}/applications`, { body: { rsn: 'Rival' } });
+	await call(env, 'POST', `/v1/clans/${at.clan.code}/applications/Rival`,
+		{ body: { decision: 'accept' }, token: at.clan.token });
+	const rival = env.DB.raw.prepare('SELECT token FROM clan_members WHERE clan_code = ? AND rsn = ?')
+		.get(at.clan.code, 'Rival').token;
+
+	const now = Date.now();
+	await call(env, 'POST', `/v1/events/${at.code}/observations`, {
+		body: { observations: [seen('completion', 'Wintertodt', 1, now - 300_000)] },
+		token: at.player
+	});
+	await call(env, 'POST', `/v1/events/${at.code}/observations`, {
+		body: { observations: [seen('completion', 'Wintertodt', 4, now)] },
+		token: rival
+	});
+
+	const board = (await call(env, 'GET', `/v1/events/${at.code}/participants`, { token: at.player }))
+		.body.participants;
+
+	assert.equal(board.find((row) => row.rsn === 'Player').points, 26, 'one completion and the bounty');
+	assert.equal(board.find((row) => row.rsn === 'Rival').points, 4, 'four completions and no bounty');
+});

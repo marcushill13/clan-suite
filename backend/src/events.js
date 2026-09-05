@@ -19,7 +19,9 @@ import { can, memberFor } from './clans.js';
 import * as discord from './discord.js';
 
 /** What an event is for. The hub's colour coding and the calendar both come off this later. */
-const CATEGORIES = ['pvm', 'raids', 'skilling', 'minigame', 'social', 'custom'];
+const CATEGORIES = [
+	'pvm', 'raids', 'skilling', 'minigame', 'social', 'clue', 'wilderness', 'pvp', 'special', 'custom'
+];
 
 /**
  * Draft is private to the people running it; published is what the clan sees. Cancelled is kept rather
@@ -598,7 +600,7 @@ async function submitObservations(code, request, env, { json, readJson })
 			continue;
 		}
 
-		writes.push(env.DB.prepare(
+		const statement = env.DB.prepare(
 			`INSERT OR IGNORE INTO event_observations
 				(id, event_code, rsn, metric, subject, amount, occurred_at, recorded_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
@@ -609,7 +611,10 @@ async function submitObservations(code, request, env, { json, readJson })
 					? null
 					: String(observation.subject),
 				Math.max(0, Math.trunc(Number(observation.amount) || 0)),
-				Math.trunc(occurredAt), now));
+				Math.trunc(occurredAt), now);
+
+		statement.observationId = observation.id;
+		writes.push(statement);
 	}
 
 	if (writes.length)
@@ -617,7 +622,32 @@ async function submitObservations(code, request, env, { json, readJson })
 		await env.DB.batch(writes);
 	}
 
-	const points = await rescore(code, me.rsn, env, event);
+	let rules = [];
+	try
+	{
+		rules = JSON.parse(event.config)?.points ?? [];
+	}
+	catch
+	{
+		rules = [];
+	}
+
+	rules = Array.isArray(rules) ? rules : [];
+
+	// A bounty is the one thing one person's report can change for everybody: the first Fox whistle
+	// takes the hundred points away from whoever the database thought had it, if a report that
+	// happened earlier turns up late. So everyone is worked out again rather than only the reporter.
+	const bounties = rules.filter(isBounty);
+	const won = bounties.length ? await settleBounties(code, env, rules, mine(writes)) : [];
+
+	const points = bounties.length
+		? (await rescoreEveryone(code, env), await currentPoints(code, me.rsn, env))
+		: await rescore(code, me.rsn, env, event);
+
+	for (const bounty of won)
+	{
+		await tell(env, event.clan_code, () => discord.bountyWon(event, bounty.rsn, bounty.rule));
+	}
 
 	// Only the drops the event named in its own rules. A clan that wrote "Tumeken's shadow is worth
 	// five hundred" has already said what it thinks is worth shouting about, so there is no second
@@ -666,7 +696,19 @@ async function rescore(code, rsn, env, event = null)
 		 GROUP BY metric, subject`)
 		.bind(code, rsn).all();
 
-	const points = scoreOf(totals.results ?? [], Array.isArray(rules) ? rules : []);
+	const list = Array.isArray(rules) ? rules : [];
+	const winners = await bountyWinners(code, env, list);
+
+	const won = new Set();
+	for (const [index, winner] of winners)
+	{
+		if (winner.rsn === rsn)
+		{
+			won.add(index);
+		}
+	}
+
+	const points = scoreOf(totals.results ?? [], list, won);
 
 	await env.DB.prepare(
 		`INSERT INTO clan_event_participants (event_code, rsn, joined_at, attended, points, adjustment)
@@ -688,15 +730,25 @@ async function rescore(code, rsn, env, event = null)
  *
  * Exported so the tests can reach it without a database.
  */
-export function scoreOf(totals, rules)
+export function scoreOf(totals, rules, won = new Set())
 {
 	let points = 0;
 
-	for (const rule of rules)
+	for (let index = 0; index < rules.length; index++)
 	{
+		const rule = rules[index];
 		const metric = String(rule?.metric ?? '').toLowerCase();
 		if (!metric)
 		{
+			continue;
+		}
+
+		// A bounty is not worth anything per kill or per drop. It is worth its points to whoever got
+		// there first and nothing at all to everybody else, which is a fact about the whole event
+		// rather than about this person's totals — so it is settled before this and handed in.
+		if (isBounty(rule))
+		{
+			points += won.has(index) ? Math.trunc(Number(rule.points) || 0) : 0;
 			continue;
 		}
 
@@ -738,6 +790,99 @@ export function scoreOf(totals, rules)
 	}
 
 	return points;
+}
+
+export function isBounty(rule)
+{
+	return String(rule?.kind ?? '').toLowerCase() === 'bounty';
+}
+
+/**
+ * Who got there first.
+ *
+ * A bounty is the one rule that cannot be worked out from one person's own reports: "first to a Fox
+ * whistle" is a question about everybody. Ordered by when it happened rather than when it arrived, so
+ * somebody whose client was offline for ten minutes still wins the whistle they got first — with the
+ * arrival time and then the id to break ties, because two people cannot both be first and the answer
+ * must not depend on which row the database felt like returning.
+ */
+async function bountyWinners(code, env, rules)
+{
+	const winners = new Map();
+
+	for (let index = 0; index < rules.length; index++)
+	{
+		const rule = rules[index];
+		if (!isBounty(rule))
+		{
+			continue;
+		}
+
+		const metric = String(rule.metric ?? '').toLowerCase();
+		if (!metric)
+		{
+			continue;
+		}
+
+		const subject = rule.subject === undefined || rule.subject === null
+			? null
+			: String(rule.subject).toLowerCase();
+
+		const first = subject === null
+			? await env.DB.prepare(
+				`SELECT rsn, id FROM event_observations WHERE event_code = ? AND metric = ?
+				 ORDER BY occurred_at ASC, recorded_at ASC, id ASC LIMIT 1`)
+				.bind(code, metric).first()
+			: await env.DB.prepare(
+				`SELECT rsn, id FROM event_observations
+				 WHERE event_code = ? AND metric = ? AND lower(subject) = ?
+				 ORDER BY occurred_at ASC, recorded_at ASC, id ASC LIMIT 1`)
+				.bind(code, metric, subject).first();
+
+		if (first)
+		{
+			winners.set(index, first);
+		}
+	}
+
+	return winners;
+}
+
+/** The ids this request actually wrote, so a bounty already settled is not announced again. */
+function mine(writes)
+{
+	return new Set(writes.map((statement) => statement.observationId).filter(Boolean));
+}
+
+/**
+ * Which bounties were decided by what just arrived.
+ *
+ * Only the ones whose winning observation is in this batch: everything else was already settled, and
+ * a clan does not want the same whistle announced every time somebody reports a log.
+ */
+async function settleBounties(code, env, rules, justWritten)
+{
+	const winners = await bountyWinners(code, env, rules);
+	const decided = [];
+
+	for (const [index, winner] of winners)
+	{
+		if (justWritten.has(winner.id))
+		{
+			decided.push({ rsn: winner.rsn, rule: rules[index] });
+		}
+	}
+
+	return decided;
+}
+
+async function currentPoints(code, rsn, env)
+{
+	const row = await env.DB.prepare(
+		'SELECT points FROM clan_event_participants WHERE event_code = ? AND rsn = ?')
+		.bind(code, rsn).first();
+
+	return row?.points ?? 0;
 }
 
 /** Rebuilds every participant's score, for when the rules themselves change. */

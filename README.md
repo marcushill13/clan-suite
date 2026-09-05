@@ -40,9 +40,19 @@ again where it cannot be edited.
 
 # Events
 
-An event belongs to a clan, has a schedule, and is built from a template — a raid night, a skilling
-week, a boss mass, a social. The template fills in what that sort of event usually counts; all of it
-stays editable, because a clan's raid night is not everybody's raid night.
+An event belongs to a clan, has a schedule, and is picked from the clan's own list — Wintertodt Mass,
+Forestry Mass, Hide and Seek, sixty-odd of them. Picking one fills in the category, what it counts and
+what things are worth. All of it stays editable, because a clan's Wintertodt mass is not everybody's.
+
+The list is per-event rather than per-kind on purpose: a Mahogany Homes mass has no kill count and
+never will, and a Forestry mass is mostly about who finds the whistle first.
+
+**Bounties** are for that last part. An ordinary rule pays a rate — every ten kills, every million
+experience. A bounty pays once, to whoever got there first, and nothing to anybody else. First to a Fox
+whistle takes the hundred points; second gets nothing for it, which is what makes it a race. Settled by
+the service, because it is the only thing that sees everybody, and by when the drop happened rather
+than when it was reported — so being offline for ten minutes does not lose you a whistle you found
+first.
 
 New events are drafts, and a draft is only visible to the people who run the clan's events. Publishing
 puts it on the calendar. Cancelling keeps it there with the reason attached, because an event that was

@@ -43,11 +43,21 @@ public final class Theme
 	 * anybody. Kept together here so the meanings cannot drift apart across nine screens, and so the
 	 * calendar the clan posts each month can be drawn in the same colours people saw all week.
 	 */
-	public static final Color PVM = new Color(214, 96, 84);
-	public static final Color RAIDS = new Color(168, 116, 216);
-	public static final Color SKILLING = new Color(88, 168, 120);
-	public static final Color MINIGAME = new Color(92, 148, 208);
-	public static final Color SOCIAL = new Color(226, 168, 76);
+	/**
+	 * Taken from the calendar a clan already posts each month, rather than invented here: orange for
+	 * skilling, cyan for bossing, green for raids, cream for clues, yellow for games, pink for the
+	 * special ones, grey for the Wilderness and red for PvP. Muted a little, because a sidebar sits
+	 * beside the game rather than being looked at on its own.
+	 */
+	public static final Color SKILLING = new Color(226, 130, 82);
+	public static final Color PVM = new Color(86, 190, 200);
+	public static final Color RAIDS = new Color(140, 196, 76);
+	public static final Color MINIGAME = new Color(196, 150, 96);
+	public static final Color CLUE = new Color(214, 186, 140);
+	public static final Color SOCIAL = new Color(212, 196, 110);
+	public static final Color SPECIAL = new Color(214, 122, 180);
+	public static final Color WILDERNESS = new Color(150, 150, 154);
+	public static final Color PVP = new Color(206, 74, 68);
 	public static final Color NEUTRAL = new Color(140, 144, 158);
 
 	/** A clan that is full, or an event that has been called off. Warm, rather than an alarm. */

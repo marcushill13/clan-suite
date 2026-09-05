@@ -1,0 +1,1051 @@
+{
+	"dataVersion": 1,
+	"note": "The events one clan actually runs, with what each counts and what it usually pays. Everything here is a starting point: the create screen fills it in and lets it be edited.",
+	"presets": [
+		{
+			"id": "skill_of_the_week",
+			"name": "Skill of the Week",
+			"category": "skilling",
+			"track": [
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "skilling_minigame_of_the_week",
+			"name": "Skilling Minigame/Boss of the Week",
+			"category": "skilling",
+			"track": [
+				"xp",
+				"completion"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				},
+				{
+					"metric": "completion",
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "boss_of_the_week",
+			"name": "Boss of the Week",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"per": 10,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "raid_of_the_week",
+			"name": "Raid of the Week",
+			"category": "raids",
+			"track": [
+				"completion",
+				"drop",
+				"death"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 10
+				},
+				{
+					"metric": "death",
+					"points": -5
+				}
+			]
+		},
+		{
+			"id": "clue_of_the_week",
+			"name": "Clue of the Week",
+			"category": "clue",
+			"track": [
+				"drop",
+				"attendance"
+			],
+			"rules": [
+				{
+					"metric": "drop",
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "clogger_of_the_week",
+			"name": "Clogger of the Week",
+			"category": "special",
+			"track": [
+				"attendance"
+			],
+			"rules": [],
+			"note": "Collection log unlocks are not something the client reports yet, so this one is marked off by hand."
+		},
+		{
+			"id": "digging_for_gold",
+			"name": "Digging for Gold – Clue Event",
+			"category": "clue",
+			"track": [
+				"drop",
+				"attendance"
+			],
+			"rules": [
+				{
+					"metric": "drop",
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "bingo",
+			"name": "Bingo",
+			"category": "special",
+			"track": [
+				"attendance"
+			],
+			"rules": [],
+			"note": "A bingo board is its own thing; tick people off as tiles are completed."
+		},
+		{
+			"id": "wintertodt_mass",
+			"name": "Wintertodt Mass",
+			"category": "skilling",
+			"track": [
+				"completion",
+				"xp",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 2
+				},
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Phoenix",
+					"points": 150
+				}
+			]
+		},
+		{
+			"id": "tempoross_mass",
+			"name": "Tempoross Mass",
+			"category": "skilling",
+			"track": [
+				"completion",
+				"xp",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 2
+				},
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Tiny tempor",
+					"points": 150
+				}
+			]
+		},
+		{
+			"id": "zalcano_mass",
+			"name": "Zalcano Mass",
+			"category": "skilling",
+			"track": [
+				"kc",
+				"xp",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 2
+				},
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Smolcano",
+					"points": 150
+				}
+			]
+		},
+		{
+			"id": "gotr_mass",
+			"name": "GOTR Mass",
+			"category": "skilling",
+			"track": [
+				"completion",
+				"xp",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 2
+				},
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Abyssal protector",
+					"points": 150
+				}
+			]
+		},
+		{
+			"id": "vale_totems_mass",
+			"name": "Vale Totems Mass",
+			"category": "skilling",
+			"track": [
+				"completion",
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 1
+				},
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "barbarian_assault_mass",
+			"name": "Barbarian Assault Mass",
+			"category": "minigame",
+			"track": [
+				"completion"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 2
+				}
+			]
+		},
+		{
+			"id": "castle_wars_event",
+			"name": "Castle Wars Event",
+			"category": "minigame",
+			"track": [
+				"completion",
+				"attendance"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 2
+				}
+			]
+		},
+		{
+			"id": "soul_wars_event",
+			"name": "Soul Wars Event",
+			"category": "minigame",
+			"track": [
+				"completion",
+				"attendance"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 2
+				}
+			]
+		},
+		{
+			"id": "brimhaven_agility",
+			"name": "Brimhaven Agility",
+			"category": "skilling",
+			"track": [
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "motherlode_mine_mass",
+			"name": "Motherlode Mine Mass",
+			"category": "skilling",
+			"track": [
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "pest_control_mass",
+			"name": "Pest Control Mass",
+			"category": "minigame",
+			"track": [
+				"completion"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "mage_training_arena_mass",
+			"name": "Mage Training Arena Mass",
+			"category": "minigame",
+			"track": [
+				"xp",
+				"attendance"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "golem_crafting",
+			"name": "Golem Crafting",
+			"category": "skilling",
+			"track": [
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "hallowed_sepulchre_mass",
+			"name": "Hallowed Sepulchre Mass",
+			"category": "skilling",
+			"track": [
+				"completion",
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 2
+				},
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "forestry_mass",
+			"name": "Forestry Mass",
+			"category": "skilling",
+			"track": [
+				"xp",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Fox whistle",
+					"points": 100
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Golden pheasant egg",
+					"points": 100
+				}
+			],
+			"note": "The bounties are the two Forestry rewards worth racing for; add or change them as the clan likes."
+		},
+		{
+			"id": "zeah_rc_mass",
+			"name": "Zeah RC Mass",
+			"category": "skilling",
+			"track": [
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "gemstone_crab_mass",
+			"name": "Gem Crab Mass",
+			"category": "skilling",
+			"track": [
+				"kc",
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "dual_arena_group_imbue",
+			"name": "Dual Arena Group Imbue",
+			"category": "minigame",
+			"track": [
+				"attendance"
+			],
+			"rules": []
+		},
+		{
+			"id": "shooting_stars_mass",
+			"name": "Shooting Stars Mass",
+			"category": "skilling",
+			"track": [
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "pyramid_plunder_mass",
+			"name": "Pyramid Plunder Mass",
+			"category": "skilling",
+			"track": [
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "mahogany_homes_mass",
+			"name": "Mahogany Homes Mass",
+			"category": "skilling",
+			"track": [
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "herbi_mass",
+			"name": "Herbi Mass",
+			"category": "skilling",
+			"track": [
+				"xp",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Herbi",
+					"points": 150
+				}
+			]
+		},
+		{
+			"id": "mixology_mass",
+			"name": "Mixology Mass",
+			"category": "skilling",
+			"track": [
+				"xp"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "scurrius_mass",
+			"name": "Scurrius Mass",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 1
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Scurry",
+					"points": 150
+				}
+			]
+		},
+		{
+			"id": "huey_mass",
+			"name": "Huey Mass",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 2
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Huberte",
+					"points": 150
+				}
+			]
+		},
+		{
+			"id": "zilyana_mass",
+			"name": "Zillyana Mass",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 2
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Pet zilyana",
+					"points": 150
+				}
+			]
+		},
+		{
+			"id": "bandos_mass",
+			"name": "Bandos Mass",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 2
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Pet general graardor",
+					"points": 150
+				}
+			]
+		},
+		{
+			"id": "snail_mass",
+			"name": "Snail Mass",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "moons_bounty_mass",
+			"name": "Moons Bounty Mass",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop",
+				"completion"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 2
+				}
+			],
+			"note": "A bounty event: add a first-to-it rule for whichever unique the clan is racing for."
+		},
+		{
+			"id": "barrows_bounty_mass",
+			"name": "Barrows Bounty Mass",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop",
+				"completion"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 1
+				}
+			],
+			"note": "A bounty event: add a first-to-it rule for whichever piece the clan is racing for."
+		},
+		{
+			"id": "blind_date_bossing_rt",
+			"name": "Blind Date Bossing – RT",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "blind_date_bossing_yama",
+			"name": "Blind Date Bossing – Yama",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 5
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Yami",
+					"points": 200
+				}
+			]
+		},
+		{
+			"id": "rich_get_richer",
+			"name": "Rich Get Richer",
+			"category": "pvm",
+			"track": [
+				"drop",
+				"kc"
+			],
+			"rules": [
+				{
+					"metric": "drop",
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "fight_night",
+			"name": "Fight Night",
+			"category": "pvp",
+			"track": [
+				"attendance"
+			],
+			"rules": []
+		},
+		{
+			"id": "bossing_bootcamp",
+			"name": "Bossing Bootcamp",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"attendance"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "dt2_bounty_hour",
+			"name": "DT2 Bounty Hour",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 5
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Ultor vestige",
+					"points": 200
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Magus vestige",
+					"points": 200
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Venator vestige",
+					"points": 200
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Bellator vestige",
+					"points": 200
+				}
+			]
+		},
+		{
+			"id": "colo_teaching_stream",
+			"name": "Colo Teaching Stream",
+			"category": "pvm",
+			"track": [
+				"attendance"
+			],
+			"rules": []
+		},
+		{
+			"id": "callisto_mass",
+			"name": "Callisto Mass",
+			"category": "wilderness",
+			"track": [
+				"kc",
+				"drop",
+				"death"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 2
+				},
+				{
+					"metric": "death",
+					"points": -5
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Callisto cub",
+					"points": 150
+				}
+			]
+		},
+		{
+			"id": "nex_mass",
+			"name": "Nex Mass",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop",
+				"death"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 5
+				},
+				{
+					"metric": "death",
+					"points": -5
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Nexling",
+					"points": 200
+				}
+			]
+		},
+		{
+			"id": "nightmare_mass",
+			"name": "Nightmare Mass",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop",
+				"death"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 5
+				},
+				{
+					"metric": "death",
+					"points": -5
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Little nightmare",
+					"points": 200
+				}
+			]
+		},
+		{
+			"id": "corp_mass",
+			"name": "Corp Mass",
+			"category": "pvm",
+			"track": [
+				"kc",
+				"drop"
+			],
+			"rules": [
+				{
+					"metric": "kc",
+					"points": 2
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Pet dark core",
+					"points": 200
+				}
+			]
+		},
+		{
+			"id": "raid_night_cox",
+			"name": "Raid Night – CoX",
+			"category": "raids",
+			"track": [
+				"completion",
+				"drop",
+				"death"
+			],
+			"rules": [
+				{
+					"metric": "completion",
+					"points": 10
+				},
+				{
+					"metric": "death",
+					"points": -5
+				},
+				{
+					"kind": "bounty",
+					"metric": "drop",
+					"subject": "Olmlet",
+					"points": 200
+				}
+			]
+		},
+		{
+			"id": "trivia_night",
+			"name": "Trivia Night",
+			"category": "social",
+			"track": [
+				"attendance"
+			],
+			"rules": []
+		},
+		{
+			"id": "movie_night",
+			"name": "Movie Night",
+			"category": "social",
+			"track": [
+				"attendance"
+			],
+			"rules": []
+		},
+		{
+			"id": "hide_and_seek",
+			"name": "Hide and Seek",
+			"category": "social",
+			"track": [
+				"attendance"
+			],
+			"rules": []
+		},
+		{
+			"id": "prop_hunt",
+			"name": "Prop Hunt",
+			"category": "social",
+			"track": [
+				"attendance"
+			],
+			"rules": []
+		},
+		{
+			"id": "kahoot",
+			"name": "Kahoot",
+			"category": "social",
+			"track": [
+				"attendance"
+			],
+			"rules": []
+		},
+		{
+			"id": "skribbl",
+			"name": "Skribbl.io",
+			"category": "social",
+			"track": [
+				"attendance"
+			],
+			"rules": []
+		},
+		{
+			"id": "tears_of_guthix",
+			"name": "Tears of Guthix",
+			"category": "minigame",
+			"track": [
+				"attendance"
+			],
+			"rules": []
+		},
+		{
+			"id": "special_event",
+			"name": "Special Events",
+			"category": "special",
+			"track": [
+				"attendance"
+			],
+			"rules": []
+		},
+		{
+			"id": "wildy_altar_mass",
+			"name": "Wildy Alter Mass",
+			"category": "wilderness",
+			"track": [
+				"xp",
+				"attendance"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				}
+			]
+		},
+		{
+			"id": "wildy_agility_mass",
+			"name": "Wildy Agility Mass",
+			"category": "wilderness",
+			"track": [
+				"xp",
+				"death"
+			],
+			"rules": [
+				{
+					"metric": "xp",
+					"per": 100000,
+					"points": 1
+				},
+				{
+					"metric": "death",
+					"points": 0
+				}
+			]
+		},
+		{
+			"id": "pvp_event",
+			"name": "PvP Event",
+			"category": "pvp",
+			"track": [
+				"attendance",
+				"death"
+			],
+			"rules": []
+		},
+		{
+			"id": "custom",
+			"name": "Custom event",
+			"category": "custom",
+			"track": [],
+			"rules": []
+		}
+	]
+}

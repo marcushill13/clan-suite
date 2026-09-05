@@ -7,16 +7,21 @@ import java.util.Locale;
 /**
  * What an event is for.
  * <p>
- * The clan's monthly calendar is colour-coded by exactly this, so the colours live here rather than in
- * whichever screen happens to draw them next.
+ * The clan's monthly calendar is colour-coded by exactly this, and these are its own bands rather than
+ * anything invented here — so the sidebar all week and the picture posted at the start of the month
+ * agree about what colour a raid night is.
  */
 public enum EventCategory
 {
+	SKILLING("Skilling", Theme.SKILLING),
 	PVM("PvM", Theme.PVM),
 	RAIDS("Raids", Theme.RAIDS),
-	SKILLING("Skilling", Theme.SKILLING),
 	MINIGAME("Minigame", Theme.MINIGAME),
+	CLUE("Clue", Theme.CLUE),
 	SOCIAL("Social", Theme.SOCIAL),
+	WILDERNESS("Wilderness", Theme.WILDERNESS),
+	PVP("PvP", Theme.PVP),
+	SPECIAL("Special", Theme.SPECIAL),
 	CUSTOM("Custom", Theme.NEUTRAL);
 
 	private final String label;

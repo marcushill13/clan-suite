@@ -20,6 +20,7 @@ import com.clansuite.clan.ui.ClanHubPanel;
 import com.clansuite.clan.ui.CreateClanPanel;
 import com.clansuite.clan.ui.MyClanPanel;
 import com.clansuite.event.data.ClanEvent;
+import com.clansuite.event.data.EventPresets;
 import com.clansuite.event.net.EventApi;
 import com.clansuite.event.ui.CreateEventPanel;
 import com.clansuite.event.data.EventParticipant;
@@ -71,6 +72,7 @@ public class ClanSuitePanel extends PluginPanel
 	private final ClanStore clans;
 	private final ClanApi clanApi;
 	private final EventApi eventApi;
+	private final EventPresets presets;
 	private final BossDrops bossDrops;
 	private final BotwApi api;
 	private final ClanSuiteConfig config;
@@ -89,6 +91,7 @@ public class ClanSuitePanel extends PluginPanel
 		ClanStore clans,
 		ClanApi clanApi,
 		EventApi eventApi,
+		EventPresets presets,
 		BossDrops bossDrops,
 		BotwApi api,
 		ClanSuiteConfig config,
@@ -102,6 +105,7 @@ public class ClanSuitePanel extends PluginPanel
 		this.clans = clans;
 		this.clanApi = clanApi;
 		this.eventApi = eventApi;
+		this.presets = presets;
 		this.bossDrops = bossDrops;
 		this.api = api;
 		this.config = config;
@@ -602,7 +606,7 @@ public class ClanSuitePanel extends PluginPanel
 		JPanel screen = new JPanel();
 		screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
 		screen.setBackground(Theme.BACKGROUND);
-		screen.add(new CreateEventPanel(this::createEvent, this::showEvents));
+		screen.add(new CreateEventPanel(presets, this::createEvent, this::showEvents));
 		show(screen);
 	}
 

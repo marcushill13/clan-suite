@@ -124,6 +124,25 @@ export function bigDrop(event, rsn, item, points)
 	};
 }
 
+/**
+ * Somebody got there first.
+ *
+ * The one announcement that is a race rather than a result: a clan running a woodcutting mass with a
+ * hundred points on the first Fox whistle wants to know the moment it goes, and so does everybody
+ * still looking for one.
+ */
+export function bountyWon(event, rsn, rule)
+{
+	return {
+		embeds: [{
+			title: '🏅 BOUNTY CLAIMED',
+			description: `**${rsn}** was first to **${rule.subject ?? rule.metric}** in ${event.name}`,
+			color: 0xf0b03e,
+			fields: [{ name: 'Worth', value: `${Math.trunc(Number(rule.points) || 0)} points`, inline: true }]
+		}]
+	};
+}
+
 /** How it finished. */
 export function results(event, board)
 {
