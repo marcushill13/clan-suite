@@ -1,6 +1,7 @@
 package com.clansuite.event.net;
 
 import com.clansuite.event.data.ClanEvent;
+import com.clansuite.event.data.EventParticipant;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
@@ -119,6 +120,68 @@ public class EventApi
 		return one(authorised(new Request.Builder()
 			.url(url(baseUrl, "v1", "events", code))
 			.patch(RequestBody.create(JSON, gson.toJson(body))), token));
+	}
+
+	/** Signing up. Idempotent: pressing it twice is joining once. */
+	public Result<Boolean> join(String baseUrl, String code, String token)
+	{
+		return send(authorised(new Request.Builder()
+			.url(url(baseUrl, "v1", "events", code, "join"))
+			.post(RequestBody.create(JSON, "{}")), token), text -> Boolean.TRUE);
+	}
+
+	public Result<List<EventParticipant>> participants(String baseUrl, String code, String token)
+	{
+		return send(authorised(new Request.Builder()
+			.url(url(baseUrl, "v1", "events", code, "participants")).get(), token), text ->
+		{
+			JsonObject root = gson.fromJson(text, JsonObject.class);
+			if (root == null || !root.has("participants"))
+			{
+				return Collections.<EventParticipant>emptyList();
+			}
+
+			List<EventParticipant> found = gson.fromJson(root.get("participants"),
+				new TypeToken<List<EventParticipant>>()
+				{
+				}.getType());
+
+			return found == null ? Collections.<EventParticipant>emptyList() : found;
+		});
+	}
+
+	/**
+	 * Marking somebody off, or correcting their score.
+	 *
+	 * @param attended   null to leave the tick as it is
+	 * @param adjustment null to leave the score as it is
+	 */
+	public Result<Boolean> mark(
+		String baseUrl, String code, String token, String rsn, Boolean attended, Integer adjustment)
+	{
+		JsonObject body = new JsonObject();
+
+		if (attended != null)
+		{
+			body.addProperty("attended", attended);
+		}
+
+		if (adjustment != null)
+		{
+			body.addProperty("adjustment", adjustment);
+		}
+
+		return send(authorised(new Request.Builder()
+			.url(url(baseUrl, "v1", "events", code, "participants", rsn))
+			.patch(RequestBody.create(JSON, gson.toJson(body))), token), text -> Boolean.TRUE);
+	}
+
+	/** Leaving, or being taken off by whoever runs the event — the service tells them apart. */
+	public Result<Boolean> withdraw(String baseUrl, String code, String token, String rsn)
+	{
+		return send(authorised(new Request.Builder()
+			.url(url(baseUrl, "v1", "events", code, "participants", rsn)).delete(), token),
+			text -> Boolean.TRUE);
 	}
 
 	public Result<Boolean> delete(String baseUrl, String code, String token)

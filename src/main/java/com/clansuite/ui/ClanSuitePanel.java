@@ -22,7 +22,9 @@ import com.clansuite.clan.ui.MyClanPanel;
 import com.clansuite.event.data.ClanEvent;
 import com.clansuite.event.net.EventApi;
 import com.clansuite.event.ui.CreateEventPanel;
+import com.clansuite.event.data.EventParticipant;
 import com.clansuite.event.ui.EventListPanel;
+import com.clansuite.event.ui.EventView;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -288,6 +290,10 @@ public class ClanSuitePanel extends PluginPanel
 
 	/** The hub's last search, so a refresh after applying does not throw the query away. */
 	private String hubQuery = "";
+
+	/** The event on screen, so that acting on it can redraw the same one afterwards. */
+	private ClanEvent openedEvent;
+	private boolean openedEventManageable;
 
 	/** A row with one button in it, for the screens that are reached from somewhere rather than chosen. */
 	private Component backTo(String label, Runnable onBack)
@@ -630,11 +636,10 @@ public class ClanSuitePanel extends PluginPanel
 	}
 
 	/**
-	 * One event.
+	 * One event: when it is, who is in it, and what they have.
 	 * <p>
 	 * A Boss of the Week event is a challenge underneath, so it opens the screen that already knows how
-	 * to run one. Everything else gets what there is to show: when it runs, what it counts, and — for
-	 * whoever runs the events — publishing and cancelling.
+	 * to run one rather than a second, poorer version of it.
 	 */
 	private void openEvent(ClanEvent event, boolean canManage)
 	{
@@ -645,60 +650,113 @@ public class ClanSuitePanel extends PluginPanel
 			return;
 		}
 
-		JPanel screen = new JPanel();
-		screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
-		screen.setBackground(Theme.BACKGROUND);
+		openedEvent = event;
+		openedEventManageable = canManage;
 
-		screen.add(Cards.title(event.getName()));
-		screen.add(Cards.gap(4));
-		screen.add(muted(event.category().getLabel() + " · " + event.template().getLabel()
-			+ (event.isDraft() ? " · draft" : event.isCancelled() ? " · cancelled" : "")));
-		screen.add(Cards.gap(10));
+		ClanStore.Membership mine = clans.membership();
+		busy("Reading " + event.getName() + "…");
 
-		screen.add(Cards.sectionLabel("EVENT CODE"));
-		JLabel code = new JLabel(event.getCode());
-		code.setFont(Theme.figure(20f));
-		code.setForeground(Theme.GOLD);
-		code.setAlignmentX(Component.LEFT_ALIGNMENT);
-		screen.add(code);
-
-		screen.add(Cards.gap(10));
-		screen.add(Cards.sectionLabel("WHAT IT COUNTS"));
-		screen.add(muted(event.getConfig() != null && event.getConfig().has("track")
-			? event.getConfig().get("track").toString()
-			: "Nothing yet"));
-
-		screen.add(Cards.gap(4));
-		screen.add(muted("Counting itself is the next piece of work: the event knows what it is for, "
-			+ "and the trackers that watch for it are being built one at a time."));
-
-		if (canManage)
+		executor.execute(() ->
 		{
-			screen.add(Cards.gap(12));
+			EventApi.Result<List<EventParticipant>> taking =
+				eventApi.participants(config.serverUrl(), event.getCode(), mine.getToken());
+			ClanApi.Result<ClanApi.Session> clan =
+				clanApi.read(config.serverUrl(), mine.getCode(), mine.getToken());
 
-			if (event.isDraft())
+			SwingUtilities.invokeLater(() ->
 			{
-				JButton publish = Cards.button("Publish");
-				publish.addActionListener(pressed -> setEventStatus(event, "published"));
-				screen.add(publish);
-				screen.add(Cards.gap(6));
+				if (!taking.ok())
+				{
+					showOffline(taking.getError());
+					return;
+				}
+
+				JPanel screen = new JPanel();
+				screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+				screen.setBackground(Theme.BACKGROUND);
+				screen.add(nav());
+				screen.add(Cards.gap(12));
+				screen.add(new EventView(
+					event,
+					taking.getValue(),
+					playerName.get(),
+					canManage,
+					clan.ok() && clan.getValue().can(Capability.RESULT_VERIFY),
+					eventActions(event, canManage)));
+
+				show(screen);
+			});
+		});
+	}
+
+	private EventView.Actions eventActions(ClanEvent event, boolean canManage)
+	{
+		String url = config.serverUrl();
+		String code = event.getCode();
+		String token = clans.membership() == null ? null : clans.membership().getToken();
+
+		return new EventView.Actions()
+		{
+			@Override
+			public void join()
+			{
+				onEvent("Signing up…", () -> eventApi.join(url, code, token));
 			}
 
-			if (!event.isCancelled())
+			@Override
+			public void leave()
 			{
-				JButton cancel = Cards.button("Cancel event");
-				cancel.addActionListener(pressed -> setEventStatus(event, "cancelled"));
-				screen.add(cancel);
-				screen.add(Cards.gap(6));
+				String rsn = playerName.get();
+				if (rsn == null)
+				{
+					Cards.warn(ClanSuitePanel.this, "Log in first.");
+					return;
+				}
+
+				onEvent("Leaving…", () -> eventApi.withdraw(url, code, token, rsn));
 			}
-		}
 
-		screen.add(Cards.gap(6));
-		JButton back = Cards.button("Back");
-		back.addActionListener(pressed -> showEvents());
-		screen.add(back);
+			@Override
+			public void mark(String rsn, Boolean attended, Integer adjustment)
+			{
+				onEvent("Saving…", () -> eventApi.mark(url, code, token, rsn, attended, adjustment));
+			}
 
-		show(screen);
+			@Override
+			public void setStatus(String status)
+			{
+				setEventStatus(event, status);
+			}
+
+			@Override
+			public void back()
+			{
+				showEvents();
+			}
+		};
+	}
+
+	/** Do it, then draw the event again from what the service says rather than from what was hoped. */
+	private void onEvent(String message, Supplier<EventApi.Result<?>> call)
+	{
+		ClanEvent event = openedEvent;
+		boolean canManage = openedEventManageable;
+
+		busy(message);
+		executor.execute(() ->
+		{
+			EventApi.Result<?> result = call.get();
+
+			SwingUtilities.invokeLater(() ->
+			{
+				openEvent(event, canManage);
+
+				if (!result.ok())
+				{
+					Cards.warn(this, result.getError());
+				}
+			});
+		});
 	}
 
 	private void setEventStatus(ClanEvent event, String status)

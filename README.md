@@ -51,9 +51,14 @@ called off is a thing people ask about afterwards.
 Boss of the Week is a template like any other, and an event built from it is run as a challenge on the
 screens that already know how to run one.
 
-What is not built yet: none of this counts anything. The events know what they are for and what they
-mean to track — the trackers that watch for it come next, one activity at a time. Boss of the Week
-tracks as it always has.
+People take part by signing up, so a leaderboard holds who turned up rather than five hundred clan
+members sitting on nought. Staff can mark somebody present and correct a score by hand — which is not
+a stopgap for socials: nothing a game client can read proves anybody turned up to a hide and seek, and
+nothing ever will.
+
+What is not built yet: nothing is counted automatically. The events know what they are for, and the
+trackers that watch for it come next, one activity at a time. Boss of the Week tracks as it always
+has.
 
 # Boss of the Week
 

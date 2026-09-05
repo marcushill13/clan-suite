@@ -283,3 +283,157 @@ test('an event that does not exist says so', async () =>
 	assert.equal((await call(env, 'PATCH', '/v1/events/ZZZZZZ', { body: { name: 'x' } })).status, 404);
 	assert.equal((await call(env, 'DELETE', '/v1/events/ZZZZZZ')).status, 404);
 });
+
+test('taking part is something you do, not something done to you', async () =>
+{
+	const env = { DB: database() };
+	const clan = await clanWithStaff(env);
+	const made = await call(env, 'POST', `/v1/clans/${clan.code}/events`,
+		{ body: raidNight({ status: 'published' }), token: clan.admin });
+	const code = made.body.event.code;
+
+	assert.equal((await call(env, 'POST', `/v1/events/${code}/join`, { token: clan.member })).status, 201);
+
+	const taking = await call(env, 'GET', `/v1/events/${code}/participants`, { token: clan.member });
+	assert.deepEqual(taking.body.participants.map((p) => p.rsn), ['Regular']);
+	assert.equal(taking.body.participants[0].points, 0);
+	assert.equal(taking.body.participants[0].attended, false);
+
+	// Twice is once. Somebody pressing the button again has not joined twice.
+	assert.equal((await call(env, 'POST', `/v1/events/${code}/join`, { token: clan.member })).status, 201);
+	assert.equal((await call(env, 'GET', `/v1/events/${code}/participants`, { token: clan.member }))
+		.body.participants.length, 1);
+});
+
+test('you cannot join a draft, a cancelled event, or one that has finished', async () =>
+{
+	const env = { DB: database() };
+	const clan = await clanWithStaff(env);
+
+	const draft = await call(env, 'POST', `/v1/clans/${clan.code}/events`,
+		{ body: raidNight(), token: clan.admin });
+	assert.equal((await call(env, 'POST', `/v1/events/${draft.body.event.code}/join`,
+		{ token: clan.member })).status, 404);
+
+	const cancelled = await call(env, 'POST', `/v1/clans/${clan.code}/events`,
+		{ body: raidNight({ status: 'cancelled' }), token: clan.admin });
+	assert.equal((await call(env, 'POST', `/v1/events/${cancelled.body.event.code}/join`,
+		{ token: clan.member })).status, 409);
+
+	const start = Date.now() - 8 * HOUR;
+	const over = await call(env, 'POST', `/v1/clans/${clan.code}/events`, {
+		body: raidNight({ startsAt: start, endsAt: start + HOUR, status: 'published' }),
+		token: clan.admin
+	});
+	assert.equal((await call(env, 'POST', `/v1/events/${over.body.event.code}/join`,
+		{ token: clan.member })).status, 409);
+});
+
+test('somebody from another clan cannot join or read the list', async () =>
+{
+	const env = { DB: database() };
+	const clan = await clanWithStaff(env);
+	const stranger = await call(env, 'POST', '/v1/clans', { body: { name: 'Other', rsn: 'Stranger' } });
+	const made = await call(env, 'POST', `/v1/clans/${clan.code}/events`,
+		{ body: raidNight({ status: 'published' }), token: clan.admin });
+	const code = made.body.event.code;
+
+	assert.equal((await call(env, 'POST', `/v1/events/${code}/join`,
+		{ token: stranger.body.token })).status, 403);
+	assert.equal((await call(env, 'GET', `/v1/events/${code}/participants`,
+		{ token: stranger.body.token })).status, 403);
+});
+
+test('attendance is ticked by a person, because nothing else can see it', async () =>
+{
+	const env = { DB: database() };
+	const clan = await clanWithStaff(env);
+	const made = await call(env, 'POST', `/v1/clans/${clan.code}/events`, {
+		body: raidNight({ name: 'Hide & Seek', category: 'social', template: 'social', status: 'published' }),
+		token: clan.admin
+	});
+	const code = made.body.event.code;
+
+	// Marked off without having signed up, which is how a social actually goes.
+	assert.equal((await call(env, 'PATCH', `/v1/events/${code}/participants/Regular`,
+		{ body: { attended: true, adjustment: 25 }, token: clan.admin })).status, 200);
+
+	const board = await call(env, 'GET', `/v1/events/${code}/participants`, { token: clan.member });
+	assert.equal(board.body.participants[0].rsn, 'Regular');
+	assert.equal(board.body.participants[0].attended, true);
+	assert.equal(board.body.participants[0].points, 25);
+
+	// And a member cannot mark themselves off.
+	assert.equal((await call(env, 'PATCH', `/v1/events/${code}/participants/Regular`,
+		{ body: { attended: true }, token: clan.member })).status, 403);
+});
+
+test('an adjustment has to be a number, and what is not sent is left alone', async () =>
+{
+	const env = { DB: database() };
+	const clan = await clanWithStaff(env);
+	const made = await call(env, 'POST', `/v1/clans/${clan.code}/events`,
+		{ body: raidNight({ status: 'published' }), token: clan.admin });
+	const code = made.body.event.code;
+
+	await call(env, 'PATCH', `/v1/events/${code}/participants/Regular`,
+		{ body: { attended: true, adjustment: 10 }, token: clan.admin });
+
+	assert.equal((await call(env, 'PATCH', `/v1/events/${code}/participants/Regular`,
+		{ body: { adjustment: 'lots' }, token: clan.admin })).status, 400);
+
+	// Changing the score leaves the tick where it was.
+	await call(env, 'PATCH', `/v1/events/${code}/participants/Regular`,
+		{ body: { adjustment: 40 }, token: clan.admin });
+
+	const [row] = (await call(env, 'GET', `/v1/events/${code}/participants`, { token: clan.member }))
+		.body.participants;
+	assert.equal(row.attended, true);
+	assert.equal(row.points, 40);
+});
+
+test('leaving is yours to do; taking somebody off is the staff\'s', async () =>
+{
+	const env = { DB: database() };
+	const clan = await clanWithStaff(env);
+	const made = await call(env, 'POST', `/v1/clans/${clan.code}/events`,
+		{ body: raidNight({ status: 'published' }), token: clan.admin });
+	const code = made.body.event.code;
+
+	await call(env, 'POST', `/v1/events/${code}/join`, { token: clan.member });
+	await call(env, 'POST', `/v1/events/${code}/join`, { token: clan.admin });
+
+	// A member cannot take somebody else off.
+	assert.equal((await call(env, 'DELETE', `/v1/events/${code}/participants/Organiser`,
+		{ token: clan.member })).status, 403);
+
+	// But can leave.
+	assert.equal((await call(env, 'DELETE', `/v1/events/${code}/participants/Regular`,
+		{ token: clan.member })).status, 200);
+
+	// And the staff can take anyone off.
+	assert.equal((await call(env, 'DELETE', `/v1/events/${code}/participants/Organiser`,
+		{ token: clan.admin })).status, 200);
+
+	assert.equal((await call(env, 'GET', `/v1/events/${code}/participants`, { token: clan.member }))
+		.body.participants.length, 0);
+});
+
+test('the board is ordered by what people have, best first', async () =>
+{
+	const env = { DB: database() };
+	const clan = await clanWithStaff(env);
+	const made = await call(env, 'POST', `/v1/clans/${clan.code}/events`,
+		{ body: raidNight({ status: 'published' }), token: clan.admin });
+	const code = made.body.event.code;
+
+	for (const [rsn, points] of [['Regular', 30], ['Organiser', 90], ['Owner', 60]])
+	{
+		await call(env, 'PATCH', `/v1/events/${code}/participants/${rsn}`,
+			{ body: { adjustment: points }, token: clan.admin });
+	}
+
+	const board = await call(env, 'GET', `/v1/events/${code}/participants`, { token: clan.member });
+	assert.deepEqual(board.body.participants.map((p) => p.rsn), ['Organiser', 'Owner', 'Regular']);
+	assert.deepEqual(board.body.participants.map((p) => p.points), [90, 60, 30]);
+});

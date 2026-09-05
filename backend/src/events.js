@@ -47,6 +47,31 @@ export async function eventRoutes(request, env, path, helpers)
 		return listEvents(forClan[1].toUpperCase(), request, env, json);
 	}
 
+	const joining = path.match(/^\/v1\/events\/([A-Za-z0-9]+)\/join$/);
+	if (joining && request.method === 'POST')
+	{
+		return joinEvent(joining[1].toUpperCase(), request, env, helpers);
+	}
+
+	const participants = path.match(/^\/v1\/events\/([A-Za-z0-9]+)\/participants$/);
+	if (participants && request.method === 'GET')
+	{
+		return listParticipants(participants[1].toUpperCase(), request, env, json);
+	}
+
+	const participant = path.match(/^\/v1\/events\/([A-Za-z0-9]+)\/participants\/([^/]+)$/);
+	if (participant && request.method === 'PATCH')
+	{
+		return markParticipant(
+			participant[1].toUpperCase(), decodeURIComponent(participant[2]), request, env, helpers);
+	}
+
+	if (participant && request.method === 'DELETE')
+	{
+		return removeParticipant(
+			participant[1].toUpperCase(), decodeURIComponent(participant[2]), request, env, json);
+	}
+
 	const byCode = path.match(/^\/v1\/events\/([A-Za-z0-9]+)$/);
 	if (byCode && request.method === 'GET')
 	{
@@ -312,4 +337,172 @@ function publicEvent(row)
 		createdBy: row.created_by,
 		createdAt: row.created_at
 	};
+}
+
+/**
+ * Taking part.
+ *
+ * Signing up rather than being signed up: an event's leaderboard should hold the people who turned up,
+ * not everybody in a five-hundred-strong clan sitting on nought. It also gives the trackers something
+ * to check before they report anything — a kill counts towards an event the player actually joined.
+ *
+ * Only while the event could still be played. Joining one that finished last week would put somebody
+ * on a leaderboard they were never at.
+ */
+async function joinEvent(code, request, env, { json, readJson })
+{
+	const event = await loadEvent(code, env);
+	if (!event || event.status === 'draft')
+	{
+		return json({ error: 'No event with that code' }, 404);
+	}
+
+	const me = await memberFor(event.clan_code, request, env);
+	if (!me)
+	{
+		return json({ error: 'Only members of the clan can join its events' }, 403);
+	}
+
+	if (event.status === 'cancelled')
+	{
+		return json({ error: 'That event was cancelled' }, 409);
+	}
+
+	if (Date.now() > event.ends_at)
+	{
+		return json({ error: 'That event has finished' }, 409);
+	}
+
+	await env.DB.prepare(
+		`INSERT INTO clan_event_participants (event_code, rsn, joined_at, attended, points, adjustment)
+		 VALUES (?, ?, ?, 0, 0, 0)
+		 ON CONFLICT (event_code, rsn) DO NOTHING`)
+		.bind(code, me.rsn, Date.now())
+		.run();
+
+	return json({ ok: true, rsn: me.rsn }, 201);
+}
+
+/**
+ * The leaderboard, such as it is until the trackers arrive: who is in, what they have been given by
+ * hand, and whether somebody has ticked them off as having turned up.
+ */
+async function listParticipants(code, request, env, json)
+{
+	const event = await loadEvent(code, env);
+	if (!event)
+	{
+		return json({ error: 'No event with that code' }, 404);
+	}
+
+	const me = await memberFor(event.clan_code, request, env);
+	if (!me)
+	{
+		return json({ error: 'Only members of the clan can see who is taking part' }, 403);
+	}
+
+	const rows = await env.DB.prepare(
+		`SELECT rsn, joined_at AS joinedAt, attended, points, adjustment
+		 FROM clan_event_participants WHERE event_code = ?
+		 ORDER BY (points + adjustment) DESC, rsn ASC`)
+		.bind(code).all();
+
+	return json({
+		participants: (rows.results ?? []).map((row) => ({
+			rsn: row.rsn,
+			joinedAt: row.joinedAt,
+			attended: !!row.attended,
+			points: row.points + row.adjustment,
+			adjustment: row.adjustment
+		}))
+	});
+}
+
+/**
+ * Marking somebody off, or correcting their score.
+ *
+ * Hide and seek, quizzes and scavenger hunts leave no trace a client could read, and they never will:
+ * somebody who was there says who else was. That is not a gap in the tracking, it is the tracking, and
+ * it needs to be as ordinary a thing to do as any other.
+ *
+ * Points given by hand are kept apart from points that were counted, the same way the challenge
+ * leaderboard does it — so that when the trackers arrive and start writing the counted half, they
+ * cannot quietly undo somebody's correction.
+ */
+async function markParticipant(code, rsn, request, env, { json, readJson })
+{
+	const event = await loadEvent(code, env);
+	if (!event)
+	{
+		return json({ error: 'No event with that code' }, 404);
+	}
+
+	const me = await memberFor(event.clan_code, request, env);
+	if (!me || !can(me.role, 'RESULT_VERIFY'))
+	{
+		return json({ error: 'You cannot mark results for this event' }, 403);
+	}
+
+	const existing = await env.DB.prepare(
+		'SELECT rsn FROM clan_event_participants WHERE event_code = ? AND rsn = ?')
+		.bind(code, rsn).first();
+
+	const body = await readJson(request) ?? {};
+
+	if (body.adjustment !== undefined && !Number.isFinite(Number(body.adjustment)))
+	{
+		return json({ error: 'An adjustment has to be a number' }, 400);
+	}
+
+	// Somebody who turned up without signing up is still somebody who turned up.
+	if (!existing)
+	{
+		await env.DB.prepare(
+			`INSERT INTO clan_event_participants (event_code, rsn, joined_at, attended, points, adjustment)
+			 VALUES (?, ?, ?, 0, 0, 0)`)
+			.bind(code, rsn, Date.now())
+			.run();
+	}
+
+	await env.DB.prepare(
+		`UPDATE clan_event_participants SET
+			attended = CASE WHEN ? IS NULL THEN attended ELSE ? END,
+			adjustment = CASE WHEN ? IS NULL THEN adjustment ELSE ? END
+		 WHERE event_code = ? AND rsn = ?`)
+		.bind(
+			body.attended === undefined ? null : (body.attended ? 1 : 0),
+			body.attended === undefined ? null : (body.attended ? 1 : 0),
+			body.adjustment === undefined ? null : Math.trunc(Number(body.adjustment)),
+			body.adjustment === undefined ? null : Math.trunc(Number(body.adjustment)),
+			code, rsn)
+		.run();
+
+	return json({ ok: true });
+}
+
+/** Leaving, or being taken off by whoever runs the event. */
+async function removeParticipant(code, rsn, request, env, json)
+{
+	const event = await loadEvent(code, env);
+	if (!event)
+	{
+		return json({ error: 'No event with that code' }, 404);
+	}
+
+	const me = await memberFor(event.clan_code, request, env);
+	if (!me)
+	{
+		return json({ error: 'Only members of the clan can do that' }, 403);
+	}
+
+	const leaving = me.rsn.toLowerCase() === rsn.toLowerCase();
+	if (!leaving && !can(me.role, 'EVENT_MANAGE'))
+	{
+		return json({ error: 'You cannot take people off this event' }, 403);
+	}
+
+	await env.DB.prepare('DELETE FROM clan_event_participants WHERE event_code = ? AND rsn = ?')
+		.bind(code, rsn).run();
+
+	return json({ ok: true });
 }
