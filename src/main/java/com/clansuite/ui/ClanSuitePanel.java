@@ -19,6 +19,10 @@ import com.clansuite.clan.net.ClanApi;
 import com.clansuite.clan.ui.ClanHubPanel;
 import com.clansuite.clan.ui.CreateClanPanel;
 import com.clansuite.clan.ui.MyClanPanel;
+import com.clansuite.event.data.ClanEvent;
+import com.clansuite.event.net.EventApi;
+import com.clansuite.event.ui.CreateEventPanel;
+import com.clansuite.event.ui.EventListPanel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -64,6 +68,7 @@ public class ClanSuitePanel extends PluginPanel
 	private final ChallengeStore challenges;
 	private final ClanStore clans;
 	private final ClanApi clanApi;
+	private final EventApi eventApi;
 	private final BossDrops bossDrops;
 	private final BotwApi api;
 	private final ClanSuiteConfig config;
@@ -81,6 +86,7 @@ public class ClanSuitePanel extends PluginPanel
 		ChallengeStore challenges,
 		ClanStore clans,
 		ClanApi clanApi,
+		EventApi eventApi,
 		BossDrops bossDrops,
 		BotwApi api,
 		ClanSuiteConfig config,
@@ -93,6 +99,7 @@ public class ClanSuitePanel extends PluginPanel
 		this.challenges = challenges;
 		this.clans = clans;
 		this.clanApi = clanApi;
+		this.eventApi = eventApi;
 		this.bossDrops = bossDrops;
 		this.api = api;
 		this.config = config;
@@ -303,7 +310,7 @@ public class ClanSuitePanel extends PluginPanel
 			}
 			else
 			{
-				showList();
+				showEvents();
 			}
 		});
 	}
@@ -502,6 +509,189 @@ public class ClanSuitePanel extends PluginPanel
 			SwingUtilities.invokeLater(() ->
 			{
 				showMyClan();
+
+				if (!result.ok())
+				{
+					Cards.warn(this, result.getError());
+				}
+			});
+		});
+	}
+
+	/**
+	 * The clan's calendar.
+	 * <p>
+	 * Two requests rather than one: what the events are, and what this member is allowed to do about
+	 * them. The second is asked of the service every time rather than read from what was saved,
+	 * because a rank can change between one visit and the next.
+	 */
+	private void showEvents()
+	{
+		section = 2;
+
+		if (!clans.isInAClan())
+		{
+			// Nothing to show a calendar for. The challenges are still theirs, so that is what they get.
+			showList();
+			return;
+		}
+
+		ClanStore.Membership mine = clans.membership();
+		busy("Reading the calendar…");
+
+		executor.execute(() ->
+		{
+			ClanApi.Result<ClanApi.Session> clan =
+				clanApi.read(config.serverUrl(), mine.getCode(), mine.getToken());
+			EventApi.Result<List<ClanEvent>> events =
+				eventApi.forClan(config.serverUrl(), mine.getCode(), mine.getToken());
+
+			SwingUtilities.invokeLater(() ->
+			{
+				if (!events.ok())
+				{
+					showOffline(events.getError());
+					return;
+				}
+
+				boolean canManage = clan.ok() && clan.getValue().can(Capability.EVENT_MANAGE);
+
+				JPanel screen = new JPanel();
+				screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+				screen.setBackground(Theme.BACKGROUND);
+				screen.add(nav());
+				screen.add(Cards.gap(12));
+				screen.add(new EventListPanel(events.getValue(), canManage, this::showCreateEvent,
+					event -> openEvent(event, canManage), this::showEvents, this::showList));
+
+				show(screen);
+			});
+		});
+	}
+
+	private void showCreateEvent()
+	{
+		JPanel screen = new JPanel();
+		screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+		screen.setBackground(Theme.BACKGROUND);
+		screen.add(new CreateEventPanel(this::createEvent, this::showEvents));
+		show(screen);
+	}
+
+	private void createEvent(ClanEvent event)
+	{
+		ClanStore.Membership mine = clans.membership();
+		if (mine == null)
+		{
+			Cards.warn(this, "You need to be in a clan to run an event for it.");
+			return;
+		}
+
+		busy("Saving " + event.getName() + "…");
+		executor.execute(() ->
+		{
+			EventApi.Result<ClanEvent> result =
+				eventApi.create(config.serverUrl(), mine.getCode(), mine.getToken(), event);
+
+			SwingUtilities.invokeLater(() ->
+			{
+				if (!result.ok())
+				{
+					showCreateEvent();
+					Cards.warn(this, result.getError());
+					return;
+				}
+
+				showEvents();
+			});
+		});
+	}
+
+	/**
+	 * One event.
+	 * <p>
+	 * A Boss of the Week event is a challenge underneath, so it opens the screen that already knows how
+	 * to run one. Everything else gets what there is to show: when it runs, what it counts, and — for
+	 * whoever runs the events — publishing and cancelling.
+	 */
+	private void openEvent(ClanEvent event, boolean canManage)
+	{
+		String challenge = event.challengeCode();
+		if (event.template().isBossOfTheWeek() && challenge != null)
+		{
+			openChallenge(challenge);
+			return;
+		}
+
+		JPanel screen = new JPanel();
+		screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+		screen.setBackground(Theme.BACKGROUND);
+
+		screen.add(Cards.title(event.getName()));
+		screen.add(Cards.gap(4));
+		screen.add(muted(event.category().getLabel() + " · " + event.template().getLabel()
+			+ (event.isDraft() ? " · draft" : event.isCancelled() ? " · cancelled" : "")));
+		screen.add(Cards.gap(10));
+
+		screen.add(Cards.sectionLabel("EVENT CODE"));
+		JLabel code = new JLabel(event.getCode());
+		code.setFont(Theme.figure(20f));
+		code.setForeground(Theme.GOLD);
+		code.setAlignmentX(Component.LEFT_ALIGNMENT);
+		screen.add(code);
+
+		screen.add(Cards.gap(10));
+		screen.add(Cards.sectionLabel("WHAT IT COUNTS"));
+		screen.add(muted(event.getConfig() != null && event.getConfig().has("track")
+			? event.getConfig().get("track").toString()
+			: "Nothing yet"));
+
+		screen.add(Cards.gap(4));
+		screen.add(muted("Counting itself is the next piece of work: the event knows what it is for, "
+			+ "and the trackers that watch for it are being built one at a time."));
+
+		if (canManage)
+		{
+			screen.add(Cards.gap(12));
+
+			if (event.isDraft())
+			{
+				JButton publish = Cards.button("Publish");
+				publish.addActionListener(pressed -> setEventStatus(event, "published"));
+				screen.add(publish);
+				screen.add(Cards.gap(6));
+			}
+
+			if (!event.isCancelled())
+			{
+				JButton cancel = Cards.button("Cancel event");
+				cancel.addActionListener(pressed -> setEventStatus(event, "cancelled"));
+				screen.add(cancel);
+				screen.add(Cards.gap(6));
+			}
+		}
+
+		screen.add(Cards.gap(6));
+		JButton back = Cards.button("Back");
+		back.addActionListener(pressed -> showEvents());
+		screen.add(back);
+
+		show(screen);
+	}
+
+	private void setEventStatus(ClanEvent event, String status)
+	{
+		ClanStore.Membership mine = clans.membership();
+		busy(status.equals("published") ? "Publishing…" : "Cancelling…");
+
+		executor.execute(() ->
+		{
+			EventApi.Result<ClanEvent> result =
+				eventApi.setStatus(config.serverUrl(), event.getCode(), mine.getToken(), status);
+
+			SwingUtilities.invokeLater(() ->
+			{
+				showEvents();
 
 				if (!result.ok())
 				{

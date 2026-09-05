@@ -38,6 +38,23 @@ clan already makes. And what a rank allows is enforced by the service, not by th
 hides buttons you could not use, but hiding a button is not a permission — every action is checked
 again where it cannot be edited.
 
+# Events
+
+An event belongs to a clan, has a schedule, and is built from a template — a raid night, a skilling
+week, a boss mass, a social. The template fills in what that sort of event usually counts; all of it
+stays editable, because a clan's raid night is not everybody's raid night.
+
+New events are drafts, and a draft is only visible to the people who run the clan's events. Publishing
+puts it on the calendar. Cancelling keeps it there with the reason attached, because an event that was
+called off is a thing people ask about afterwards.
+
+Boss of the Week is a template like any other, and an event built from it is run as a challenge on the
+screens that already know how to run one.
+
+What is not built yet: none of this counts anything. The events know what they are for and what they
+mean to track — the trackers that watch for it come next, one activity at a time. Boss of the Week
+tracks as it always has.
+
 # Boss of the Week
 
 ## Setting one up
@@ -118,6 +135,7 @@ would rather run its own can deploy it and change the address in the plugin's se
 - `com.clansuite.ui` — the sidebar and the shared look: colours, fonts, cards, buttons
 - `com.clansuite.capture` — screenshots, which every event type will want
 - `com.clansuite.clan` — clans, ranks, the hub and applications
+- `com.clansuite.event` — events, templates and the calendar
 - `com.clansuite.botw` — Boss of the Week: its data, its tracker, its screens, its service calls
 
 Anything under `botw` belongs to that one event. Everything above it is meant to be shared by every

@@ -18,6 +18,7 @@
  */
 
 import { clanRoutes } from './clans.js';
+import { eventRoutes } from './events.js';
 
 /** Codes people read aloud in Discord, so no O/0 or I/1. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -89,6 +90,12 @@ async function route(request, env)
 	if (clan)
 	{
 		return withCors(clan);
+	}
+
+	const event = await eventRoutes(request, env, path, { json, readJson, randomToken, randomCode });
+	if (event)
+	{
+		return withCors(event);
 	}
 
 	if (path === '/v1/challenges' && request.method === 'POST')

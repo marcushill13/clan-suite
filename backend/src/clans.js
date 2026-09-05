@@ -501,7 +501,7 @@ async function decide(code, rsn, request, env, { json, readJson })
 }
 
 /** Who is calling, by the token the plugin holds. Null for anyone who is not a member. */
-async function memberFor(code, request, env)
+export async function memberFor(code, request, env)
 {
 	const token = request.headers.get('X-Clan-Token');
 	if (!token)
