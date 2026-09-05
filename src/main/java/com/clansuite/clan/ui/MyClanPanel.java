@@ -43,7 +43,11 @@ public class MyClanPanel extends JPanel
 		/** The clan's calendar, which is what most people open the clan to look at. */
 		void openEvents();
 
-		void saveSettings(Clan wanted);
+		/**
+		 * @param discordWebhook a new address, an empty string to turn announcements off, or null to
+		 *                       leave it as it is
+		 */
+		void saveSettings(Clan wanted, String discordWebhook);
 
 		void decide(String rsn, boolean accept);
 
@@ -58,6 +62,7 @@ public class MyClanPanel extends JPanel
 
 	private final JTextField name = Theme.textField(new JTextField());
 	private final JTextField tagline = Theme.textField(new JTextField());
+	private final JTextField webhook = Theme.textField(new JTextField());
 
 	/** Held because the toggles are segmented buttons rather than checkboxes; these are their state. */
 	private boolean listed;
@@ -230,6 +235,26 @@ public class MyClanPanel extends JPanel
 		body.add(Cards.muted("Closed removes the apply button and refuses any that arrive anyway."));
 
 		body.add(Cards.gap(10));
+		body.add(Cards.sectionLabel("DISCORD"));
+		body.add(Cards.body(clan.isDiscord()
+			? "Announcements are on."
+			: "No announcements set up."));
+		body.add(Cards.gap(4));
+		body.add(Cards.field("Webhook address", webhook));
+		body.add(Cards.muted(clan.isDiscord()
+			? "Paste a new one to move where announcements go. Leave it empty to keep the current one."
+			: "Discord: Channel > Edit Channel > Integrations > Webhooks > New Webhook, then copy the "
+				+ "address. Events, big drops and results are posted for you."));
+
+		if (clan.isDiscord())
+		{
+			body.add(Cards.gap(6));
+			JButton off = Cards.button("Turn announcements off");
+			off.addActionListener(event -> actions.saveSettings(asTyped(clan), ""));
+			body.add(inRow(off));
+		}
+
+		body.add(Cards.gap(10));
 
 		JButton save = Cards.button("Save settings");
 		save.addActionListener(event ->
@@ -240,14 +265,10 @@ public class MyClanPanel extends JPanel
 				return;
 			}
 
-			Clan wanted = new Clan();
-			wanted.setCode(clan.getCode());
-			wanted.setName(name.getText().trim());
-			wanted.setTagline(tagline.getText().trim());
-			wanted.setListed(listed);
-			wanted.setApplicationsOpen(applicationsOpen);
-
-			actions.saveSettings(wanted);
+			// An empty box means "leave Discord alone", not "turn it off" — turning it off is its own
+			// button, so that clearing the field by accident cannot silence a clan's announcements.
+			String typed = webhook.getText().trim();
+			actions.saveSettings(asTyped(clan), typed.isEmpty() ? null : typed);
 		});
 
 		body.add(inRow(save));
@@ -255,6 +276,18 @@ public class MyClanPanel extends JPanel
 		return Cards.expandable("Clan settings", body, button ->
 		{
 		});
+	}
+
+	/** The settings as they stand in the boxes, ready to be saved. */
+	private Clan asTyped(Clan clan)
+	{
+		Clan wanted = new Clan();
+		wanted.setCode(clan.getCode());
+		wanted.setName(name.getText().trim().isEmpty() ? clan.getName() : name.getText().trim());
+		wanted.setTagline(tagline.getText().trim());
+		wanted.setListed(listed);
+		wanted.setApplicationsOpen(applicationsOpen);
+		return wanted;
 	}
 
 	/**

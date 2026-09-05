@@ -77,6 +77,24 @@ person rather than tracked, because nothing a game client can see proves anybody
 and seek. Damage and contribution in group content are not tracked either — the client is not told
 enough to be honest about them. Boss of the Week tracks as it always has, on its own screens.
 
+# Discord
+
+A clan can give Clan Suite a webhook address, and it posts for itself: an event going on the calendar,
+a reminder half an hour before it starts, the drops the event's own rules single out by name, and the
+results when it finishes.
+
+Posted by the service rather than by anybody's plugin, which is the whole reason it works. Forty people
+at the same raid night would otherwise send forty identical messages about the same purple — one per
+client that noticed it.
+
+The address is checked before it is stored: it has to be a Discord webhook. Without that check, the
+settings box would be a way of having the service make requests to anywhere at all on somebody else's
+behalf. It is never sent back out either, not even to the owner who typed it — anyone holding it could
+post to the clan's Discord as the clan.
+
+Nothing about announcements can cost anybody a point. Discord being down, a deleted webhook, an
+archived channel: all of it is logged and ignored.
+
 # Boss of the Week
 
 ## Setting one up

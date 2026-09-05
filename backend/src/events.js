@@ -16,6 +16,7 @@
  */
 
 import { can, memberFor } from './clans.js';
+import * as discord from './discord.js';
 
 /** What an event is for. The hub's colour coding and the calendar both come off this later. */
 const CATEGORIES = ['pvm', 'raids', 'skilling', 'minigame', 'social', 'custom'];
@@ -228,6 +229,15 @@ async function updateEvent(code, request, env, { json, readJson })
 			String(body.timezone ?? event.timezone), JSON.stringify(merged.config),
 			String(body.leaderboard ?? event.leaderboard), status, code)
 		.run();
+
+	// Announced the moment it goes on the calendar, and only then — a draft being worked on is nobody
+	// else's business, and an event edited twice should not be announced twice.
+	if (status === 'published' && event.status !== 'published')
+	{
+		await tell(env, event.clan_code, (clan) => discord.announcement(
+			{ ...event, name: String(merged.name).trim(), starts_at: Math.trunc(Number(merged.startsAt)),
+				ends_at: Math.trunc(Number(merged.endsAt)) }, clan));
+	}
 
 	if (body.config !== undefined)
 	{
@@ -608,6 +618,16 @@ async function submitObservations(code, request, env, { json, readJson })
 	}
 
 	const points = await rescore(code, me.rsn, env, event);
+
+	// Only the drops the event named in its own rules. A clan that wrote "Tumeken's shadow is worth
+	// five hundred" has already said what it thinks is worth shouting about, so there is no second
+	// list of exciting items to keep up to date.
+	for (const worth of notable(submitted, event))
+	{
+		await tell(env, event.clan_code, () =>
+			discord.bigDrop(event, me.rsn, worth.subject, worth.points));
+	}
+
 	return json({ ok: true, taken: writes.length, points });
 }
 
@@ -729,5 +749,111 @@ async function rescoreEveryone(code, env)
 	for (const row of rows.results ?? [])
 	{
 		await rescore(code, row.rsn, env);
+	}
+}
+
+/**
+ * The drops in this batch that the event's own rules single out by name.
+ */
+function notable(submitted, event)
+{
+	let rules = [];
+	try
+	{
+		rules = JSON.parse(event.config)?.points ?? [];
+	}
+	catch
+	{
+		return [];
+	}
+
+	const named = (Array.isArray(rules) ? rules : []).filter(
+		(rule) => String(rule?.metric ?? '').toLowerCase() === 'drop' && rule?.subject);
+
+	const found = [];
+
+	for (const observation of submitted)
+	{
+		if (String(observation?.metric ?? '').toLowerCase() !== 'drop' || !observation?.subject)
+		{
+			continue;
+		}
+
+		const rule = named.find(
+			(candidate) => String(candidate.subject).toLowerCase()
+				=== String(observation.subject).toLowerCase());
+
+		if (rule)
+		{
+			found.push({ subject: observation.subject, points: Math.trunc(Number(rule.points) || 0) });
+		}
+	}
+
+	return found;
+}
+
+/**
+ * Says something to a clan's Discord, if it has one.
+ *
+ * Best effort by design, and never in the way: whatever is wrong with somebody's webhook must not fail
+ * the request that happened to notice, nor cost anybody a point.
+ */
+async function tell(env, clanCode, message)
+{
+	try
+	{
+		const clan = await env.DB.prepare('SELECT * FROM clans WHERE code = ?').bind(clanCode).first();
+		if (!clan?.webhook_url)
+		{
+			return;
+		}
+
+		await discord.post(clan.webhook_url, message(clan));
+	}
+	catch (error)
+	{
+		console.log(`Could not tell Discord: ${error}`);
+	}
+}
+
+/**
+ * The things that are true at a moment rather than because somebody did something: an event about to
+ * start, and one that has finished. Run from the worker's timer.
+ *
+ * Each is announced once, recorded on the event itself rather than worked out from the clock, so a
+ * timer that runs twice or a deploy in the middle of one does not announce anything twice.
+ */
+export async function announceDue(env, now = Date.now())
+{
+	const soon = await env.DB.prepare(
+		`SELECT * FROM clan_events
+		 WHERE status = 'published' AND announced_start = 0 AND starts_at > ? AND starts_at <= ?`)
+		.bind(now - 60 * 60 * 1000, now + 30 * 60 * 1000).all();
+
+	for (const event of soon.results ?? [])
+	{
+		await tell(env, event.clan_code, () =>
+			discord.startingSoon(event, Math.max(0, (event.starts_at - now) / 60000)));
+
+		await env.DB.prepare('UPDATE clan_events SET announced_start = 1 WHERE code = ?')
+			.bind(event.code).run();
+	}
+
+	const over = await env.DB.prepare(
+		`SELECT * FROM clan_events
+		 WHERE status = 'published' AND announced_end = 0 AND ends_at <= ?`)
+		.bind(now).all();
+
+	for (const event of over.results ?? [])
+	{
+		const board = await env.DB.prepare(
+			`SELECT rsn, (points + adjustment) AS points FROM clan_event_participants
+			 WHERE event_code = ? ORDER BY (points + adjustment) DESC, rsn ASC`)
+			.bind(event.code).all();
+
+		await tell(env, event.clan_code, () => discord.results(event, board.results ?? []));
+
+		await env.DB.prepare('UPDATE clan_events SET announced_end = 1 WHERE code = ?')
+			.bind(event.code).run();
 	}
 }

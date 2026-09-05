@@ -455,9 +455,9 @@ public class ClanSuitePanel extends PluginPanel
 			}
 
 			@Override
-			public void saveSettings(Clan wanted)
+			public void saveSettings(Clan wanted, String discordWebhook)
 			{
-				run("Saving…", () -> clanApi.update(url, code, token, wanted));
+				run("Saving…", () -> clanApi.update(url, code, token, wanted, discordWebhook));
 			}
 
 			@Override

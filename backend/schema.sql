@@ -150,6 +150,10 @@ CREATE TABLE IF NOT EXISTS clans (
 
 	member_limit      INTEGER NOT NULL DEFAULT 500,
 
+	-- Where the clan's announcements go, if anywhere. Never sent back out: anyone holding it could post
+	-- to the clan's Discord as the clan.
+	webhook_url       TEXT,
+
 	-- Kept alongside rather than counted on every read, for the same reason the leaderboard's totals
 	-- are: the directory shows this for every clan on the screen at once.
 	members           INTEGER NOT NULL DEFAULT 0,
@@ -236,6 +240,11 @@ CREATE TABLE IF NOT EXISTS clan_events (
 
 	-- draft | published | cancelled. A cancelled event is kept, because people ask about those.
 	status      TEXT NOT NULL DEFAULT 'draft',
+
+	-- Whether Discord has been told it is about to start, and how it finished. Recorded rather than
+	-- worked out from the clock, so a timer that runs twice does not announce twice.
+	announced_start INTEGER NOT NULL DEFAULT 0,
+	announced_end   INTEGER NOT NULL DEFAULT 0,
 
 	created_by  TEXT NOT NULL,
 	created_at  INTEGER NOT NULL

@@ -18,7 +18,7 @@
  */
 
 import { clanRoutes } from './clans.js';
-import { eventRoutes } from './events.js';
+import { announceDue, eventRoutes } from './events.js';
 
 /** Codes people read aloud in Discord, so no O/0 or I/1. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -56,7 +56,15 @@ export default {
 	 */
 	async scheduled(event, env, ctx)
 	{
-		ctx.waitUntil(pruneShots(env));
+		// Two timers with different jobs. The frequent one is for things that are true at a moment —
+		// an event about to start, one that has just finished — and the daily one is the tidying up.
+		if (event.cron === '0 4 * * *')
+		{
+			ctx.waitUntil(pruneShots(env));
+			return;
+		}
+
+		ctx.waitUntil(announceDue(env));
 	},
 
 	async fetch(request, env)

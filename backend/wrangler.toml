@@ -6,7 +6,9 @@ compatibility_date = "2026-01-01"
 # for something measured in months, and 04:00 UTC is the small hours in Britain and the quiet end of
 # the evening in Australia.
 [triggers]
-crons = ["0 4 * * *"]
+# The daily one clears out expired screenshots. The frequent one announces events about to start and
+# results just after they finish, which is only worth doing at about the granularity people notice.
+crons = ["0 4 * * *", "*/5 * * * *"]
 
 # Created with `wrangler d1 create botw`. The id comes from `wrangler d1 list` if it is ever lost.
 [[d1_databases]]

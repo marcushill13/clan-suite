@@ -171,13 +171,24 @@ public class ClanApi
 			.get(), token));
 	}
 
-	public Result<Session> update(String baseUrl, String code, String token, Clan wanted)
+	/**
+	 * @param discordWebhook a new address, an empty string to turn announcements off, or null to leave
+	 *                       whatever is there alone — which is what every save that is not about
+	 *                       Discord does, since the plugin is never told the current one
+	 */
+	public Result<Session> update(
+		String baseUrl, String code, String token, Clan wanted, String discordWebhook)
 	{
 		JsonObject body = new JsonObject();
 		body.addProperty("name", wanted.getName());
 		body.addProperty("tagline", wanted.getTagline());
 		body.addProperty("listed", wanted.isListed());
 		body.addProperty("applicationsOpen", wanted.isApplicationsOpen());
+
+		if (discordWebhook != null)
+		{
+			body.addProperty("discordWebhook", discordWebhook);
+		}
 
 		return session(authorised(new Request.Builder()
 			.url(url(baseUrl, "v1", "clans", code))

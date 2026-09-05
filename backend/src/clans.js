@@ -16,6 +16,8 @@
  * in: a human who knows the clan approves each one, which is the same check a clan already makes.
  */
 
+import { isWebhook } from './discord.js';
+
 /** The game's own limit. A clan that cannot take a five-hundred-and-first member in game should not here. */
 export const MEMBER_LIMIT = 500;
 
@@ -238,13 +240,31 @@ async function updateClan(code, request, env, { json, readJson })
 		return json({ error: `A clan name is required, and no longer than ${NAME_MAX} characters` }, 400);
 	}
 
+	// Checked rather than trusted, because this is a URL somebody types into a settings box and this
+	// service will then make requests to it. Without the check, the box is a way of having Cloudflare
+	// send requests anywhere at all on somebody else's behalf.
+	let webhook = clan.webhook_url;
+	if (body?.discordWebhook !== undefined)
+	{
+		const wanted = String(body.discordWebhook ?? '').trim();
+
+		if (wanted && !isWebhook(wanted))
+		{
+			return json({ error: 'That is not a Discord webhook address' }, 400);
+		}
+
+		webhook = wanted || null;
+	}
+
 	await env.DB.prepare(
-		'UPDATE clans SET name = ?, tagline = ?, listed = ?, applications_open = ? WHERE code = ?')
+		`UPDATE clans SET name = ?, tagline = ?, listed = ?, applications_open = ?, webhook_url = ?
+		 WHERE code = ?`)
 		.bind(
 			name,
 			body?.tagline === undefined ? clan.tagline : String(body.tagline).trim().slice(0, TAGLINE_MAX),
 			body?.listed === undefined ? clan.listed : (body.listed ? 1 : 0),
 			body?.applicationsOpen === undefined ? clan.applications_open : (body.applicationsOpen ? 1 : 0),
+			webhook,
 			code)
 		.run();
 
@@ -535,10 +555,15 @@ async function unusedClanCode(env, randomCode)
 	throw new Error('Could not find an unused clan code');
 }
 
-/** What anyone may see. Tokens never appear here. */
+/**
+ * What anyone may see. Tokens never appear here, and neither does the webhook address — anyone holding
+ * it could post to the clan's Discord as the clan. Whether there is one is safe to say, because the
+ * settings screen has to show a switch.
+ */
 function publicClan(row)
 {
 	return {
+		discord: !!row.webhook_url,
 		code: row.code,
 		name: row.name,
 		tagline: row.tagline,
