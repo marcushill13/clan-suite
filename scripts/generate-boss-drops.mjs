@@ -87,7 +87,7 @@ const NEVER_UNIQUE = ['clue scroll', 'reward casket', 'ensouled', "champion's sc
 
 const OUT = path.join(
 	path.dirname(fileURLToPath(import.meta.url)),
-	'..', 'src', 'main', 'resources', 'com', 'botw', 'boss-drops.json');
+	'..', 'src', 'main', 'resources', 'com', 'clansuite', 'botw', 'boss-drops.json');
 
 async function wikitextOf(page)
 {

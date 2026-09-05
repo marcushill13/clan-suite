@@ -1,11 +1,24 @@
+# Clan Suite
+
+Run your clan's events from inside RuneLite, without the admin.
+
+Someone sets up an event and shares a code. Everyone else pastes the code in. From then on the plugin
+counts what the event is about by itself and keeps a leaderboard everyone can see. No screenshots to
+chase, no spreadsheet to maintain, no password to remember.
+
+This grew out of the Boss of the Week plugin, which is now the first event Clan Suite knows how to
+run. The rest — raid nights, skilling competitions, minigame events, socials — is being built on the
+same foundation, one event type at a time. What is written below is Boss of the Week, and it works
+exactly as it always has.
+
+## Where this came from, and what it replaces
+
+Clan Suite reads the challenges and unsent kills left behind by the Boss of the Week plugin, so
+switching over keeps everything you had joined. Run one or the other, though: two plugins both
+watching your kills would report each one twice, and the service has no way to tell that the second
+report was the same kill.
+
 # Boss of the Week
-
-Run a clan Boss of the Week competition without the admin.
-
-Someone sets up a challenge, a boss, a week, and what things are worth, and shares a code. Everyone
-else pastes the code in. From then on the plugin counts kills and drops by itself and keeps a
-leaderboard everyone can see. No screenshots to send, no spreadsheet to maintain, no password to
-remember.
 
 ## Setting one up
 
@@ -78,6 +91,16 @@ is worth is the challenge's business.
 
 The service is a Cloudflare Worker, and its source is in `backend/` in this repository. A clan that
 would rather run its own can deploy it and change the address in the plugin's settings.
+
+## How the code is laid out
+
+- `com.clansuite` — the plugin itself, its settings, and where files are written
+- `com.clansuite.ui` — the sidebar and the shared look: colours, fonts, cards, buttons
+- `com.clansuite.capture` — screenshots, which every event type will want
+- `com.clansuite.botw` — Boss of the Week: its data, its tracker, its screens, its service calls
+
+Anything under `botw` belongs to that one event. Everything above it is meant to be shared by every
+event that follows, which is why the split exists at all.
 
 ## Honest about cheating
 
