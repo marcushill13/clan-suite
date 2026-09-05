@@ -9,12 +9,24 @@ import com.clansuite.botw.track.EventSender;
 import com.clansuite.botw.ui.ChallengeView;
 import com.clansuite.botw.ui.CreatePanel;
 import com.clansuite.botw.ui.EvidencePanel;
+import com.clansuite.clan.ClanStore;
+import com.clansuite.clan.data.Capability;
+import com.clansuite.clan.data.Clan;
+import com.clansuite.clan.data.ClanApplication;
+import com.clansuite.clan.data.ClanMember;
+import com.clansuite.clan.data.Role;
+import com.clansuite.clan.net.ClanApi;
+import com.clansuite.clan.ui.ClanHubPanel;
+import com.clansuite.clan.ui.CreateClanPanel;
+import com.clansuite.clan.ui.MyClanPanel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 import javax.inject.Inject;
@@ -35,9 +47,13 @@ import net.runelite.client.ui.PluginPanel;
 /**
  * The sidebar.
  * <p>
- * Three screens behind one panel: the list of challenges this account is in, the form for making one,
- * and one challenge open. A sidebar is too narrow to show more than one at a time, and tabs across the
- * top would spend a quarter of the width saying which of three things you are looking at.
+ * One panel, one screen at a time, and a row of three at the top to choose between them: the clan this
+ * account belongs to, the hub of clans that are recruiting, and the events themselves. A sidebar is too
+ * narrow for two of anything at once.
+ * <p>
+ * What a clan screen offers depends on what the service says the reader may do, never on the rank this
+ * plugin has remembered. That is only about not drawing buttons that would be refused — every one of
+ * them is checked again where it cannot be edited.
  * <p>
  * Every call to the service happens on the executor and comes back through the EDT. A request on the
  * client thread freezes the game, and a request on the EDT freezes the panel while it waits.
@@ -46,6 +62,8 @@ import net.runelite.client.ui.PluginPanel;
 public class ClanSuitePanel extends PluginPanel
 {
 	private final ChallengeStore challenges;
+	private final ClanStore clans;
+	private final ClanApi clanApi;
 	private final BossDrops bossDrops;
 	private final BotwApi api;
 	private final ClanSuiteConfig config;
@@ -61,6 +79,8 @@ public class ClanSuitePanel extends PluginPanel
 	@Inject
 	private ClanSuitePanel(
 		ChallengeStore challenges,
+		ClanStore clans,
+		ClanApi clanApi,
 		BossDrops bossDrops,
 		BotwApi api,
 		ClanSuiteConfig config,
@@ -71,6 +91,8 @@ public class ClanSuitePanel extends PluginPanel
 		super(false);
 
 		this.challenges = challenges;
+		this.clans = clans;
+		this.clanApi = clanApi;
 		this.bossDrops = bossDrops;
 		this.api = api;
 		this.config = config;
@@ -103,7 +125,7 @@ public class ClanSuitePanel extends PluginPanel
 		scroll.getViewport().setOpaque(true);
 		add(scroll, BorderLayout.CENTER);
 
-		showList();
+		showMyClan();
 	}
 
 	public void setPlayerName(Supplier<String> playerName)
@@ -246,6 +268,413 @@ public class ClanSuitePanel extends PluginPanel
 		});
 	}
 
+	/**
+	 * The three things this panel is for, and which one is up.
+	 * <p>
+	 * Kept as a field rather than read back off the screen because the clan screens are rebuilt after
+	 * every action — accepting somebody, saving a setting — and each rebuild has to come back to the
+	 * section it was in.
+	 */
+	private static final String[] SECTIONS = {"My clan", "Clans", "Events"};
+
+	private int section;
+
+	/** The hub's last search, so a refresh after applying does not throw the query away. */
+	private String hubQuery = "";
+
+	private Component nav()
+	{
+		return Cards.segmented(SECTIONS, section, index ->
+		{
+			if (index == section)
+			{
+				return;
+			}
+
+			section = index;
+
+			if (index == 0)
+			{
+				showMyClan();
+			}
+			else if (index == 1)
+			{
+				showHub(hubQuery);
+			}
+			else
+			{
+				showList();
+			}
+		});
+	}
+
+	/**
+	 * The clan this account is in, or the two ways of getting into one.
+	 * <p>
+	 * Everything on it comes from the service rather than from what was saved: the roster, the rank,
+	 * and what that rank may do. The saved copy is only there so the screen has a name to show while
+	 * the request is in flight.
+	 */
+	private void showMyClan()
+	{
+		section = 0;
+
+		if (!clans.isInAClan())
+		{
+			JPanel screen = new JPanel();
+			screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+			screen.setBackground(Theme.BACKGROUND);
+
+			screen.add(nav());
+			screen.add(Cards.gap(12));
+			screen.add(Cards.title("No clan yet"));
+			screen.add(Cards.gap(4));
+			screen.add(muted("Make one and you own it, or find one in the list and apply. "
+				+ "Your clan is what events, leaderboards and records belong to."));
+			screen.add(Cards.gap(12));
+			screen.add(new TileButton("Create a clan", "You will be its owner", this::showCreateClan));
+			screen.add(Cards.gap(8));
+			screen.add(new TileButton("Find a clan", "Browse the clans that are recruiting",
+				() -> showHub("")));
+
+			show(screen);
+			return;
+		}
+
+		ClanStore.Membership mine = clans.membership();
+		busy("Reading " + mine.getName() + "…");
+
+		executor.execute(() ->
+		{
+			ClanApi.Result<ClanApi.Session> clan =
+				clanApi.read(config.serverUrl(), mine.getCode(), mine.getToken());
+
+			if (!clan.ok())
+			{
+				SwingUtilities.invokeLater(() ->
+				{
+					// A clan that is gone is gone; one that could not be reached is not. Only the first
+					// is worth clearing, and even then only the local copy.
+					if (clan.isGone())
+					{
+						clans.forget();
+						showMyClan();
+					}
+					else
+					{
+						showOffline(clan.getError());
+					}
+				});
+				return;
+			}
+
+			ClanApi.Result<ClanApi.Roster> roster =
+				clanApi.members(config.serverUrl(), mine.getCode(), mine.getToken());
+
+			ClanApi.Session session = clan.getValue();
+			List<ClanApplication> waiting = session.can(Capability.MEMBER_MANAGE)
+				? applicationsFor(mine)
+				: Collections.emptyList();
+
+			SwingUtilities.invokeLater(() ->
+			{
+				clans.rememberRole(session.getRole());
+				clans.rememberName(session.getClan().getName());
+
+				JPanel screen = new JPanel();
+				screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+				screen.setBackground(Theme.BACKGROUND);
+				screen.add(nav());
+				screen.add(Cards.gap(12));
+				screen.add(new MyClanPanel(
+					session.getClan(),
+					Role.of(session.getRole()),
+					session.getCapabilities(),
+					roster.ok() ? roster.getValue().getMembers() : Collections.emptyList(),
+					waiting,
+					playerName.get(),
+					clanActions(mine)));
+
+				show(screen);
+			});
+		});
+	}
+
+	private List<ClanApplication> applicationsFor(ClanStore.Membership mine)
+	{
+		ClanApi.Result<List<ClanApplication>> result =
+			clanApi.applications(config.serverUrl(), mine.getCode(), mine.getToken());
+
+		return result.ok() ? result.getValue() : Collections.<ClanApplication>emptyList();
+	}
+
+	/**
+	 * What the clan screen's buttons do. Each one asks the service and then rebuilds the screen from
+	 * the answer, rather than guessing at what changed — a promotion that was refused should leave the
+	 * rank where it was, not where the panel hoped it would be.
+	 */
+	private MyClanPanel.Actions clanActions(ClanStore.Membership mine)
+	{
+		String url = config.serverUrl();
+		String code = mine.getCode();
+		String token = mine.getToken();
+
+		return new MyClanPanel.Actions()
+		{
+			@Override
+			public void saveSettings(Clan wanted)
+			{
+				run("Saving…", () -> clanApi.update(url, code, token, wanted));
+			}
+
+			@Override
+			public void decide(String rsn, boolean accept)
+			{
+				run(accept ? "Accepting…" : "Turning down…",
+					() -> clanApi.decide(url, code, token, rsn, accept));
+			}
+
+			@Override
+			public void setRole(String rsn, String role)
+			{
+				run("Setting rank…", () -> clanApi.setRole(url, code, token, rsn, role));
+			}
+
+			@Override
+			public void remove(String rsn)
+			{
+				run("Removing…", () -> clanApi.remove(url, code, token, rsn));
+			}
+
+			@Override
+			public void leave()
+			{
+				String rsn = playerName.get();
+				if (rsn == null)
+				{
+					Cards.warn(ClanSuitePanel.this, "Log in first.");
+					return;
+				}
+
+				if (JOptionPane.showConfirmDialog(ClanSuitePanel.this,
+					"Leave " + mine.getName() + "? You would have to apply again.",
+					"Leave clan", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION)
+				{
+					return;
+				}
+
+				busy("Leaving…");
+				executor.execute(() ->
+				{
+					ClanApi.Result<Boolean> result = clanApi.remove(url, code, token, rsn);
+
+					SwingUtilities.invokeLater(() ->
+					{
+						if (!result.ok())
+						{
+							showMyClan();
+							Cards.warn(ClanSuitePanel.this, result.getError());
+							return;
+						}
+
+						clans.forget();
+						showMyClan();
+					});
+				});
+			}
+
+			@Override
+			public void refresh()
+			{
+				showMyClan();
+			}
+		};
+	}
+
+	/** Do it, say why not if it failed, and draw the clan again either way. */
+	private void run(String message, Supplier<ClanApi.Result<?>> call)
+	{
+		busy(message);
+		executor.execute(() ->
+		{
+			ClanApi.Result<?> result = call.get();
+
+			SwingUtilities.invokeLater(() ->
+			{
+				showMyClan();
+
+				if (!result.ok())
+				{
+					Cards.warn(this, result.getError());
+				}
+			});
+		});
+	}
+
+	private void showCreateClan()
+	{
+		JPanel screen = new JPanel();
+		screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+		screen.setBackground(Theme.BACKGROUND);
+		screen.add(new CreateClanPanel(this::createClan, this::showMyClan));
+		show(screen);
+	}
+
+	private void createClan(String name, String tagline)
+	{
+		String rsn = playerName.get();
+		if (rsn == null)
+		{
+			Cards.warn(this, "Log in first — a clan is owned by an account, not by an installation.");
+			return;
+		}
+
+		busy("Creating " + name + "…");
+		executor.execute(() ->
+		{
+			ClanApi.Result<ClanApi.Session> result = clanApi.create(config.serverUrl(), name, tagline, rsn);
+
+			SwingUtilities.invokeLater(() ->
+			{
+				if (!result.ok())
+				{
+					showCreateClan();
+					Cards.warn(this, result.getError());
+					return;
+				}
+
+				ClanApi.Session session = result.getValue();
+				clans.put(session.getClan().getCode(), session.getClan().getName(), rsn,
+					session.getToken(), session.getRole());
+
+				showMyClan();
+			});
+		});
+	}
+
+	/**
+	 * The hub. Only clans that have listed themselves are here; the code box reaches the rest, which is
+	 * how a private clan recruits without being on a public list.
+	 */
+	private void showHub(String query)
+	{
+		section = 1;
+		hubQuery = query == null ? "" : query;
+
+		busy("Reading the clan list…");
+		executor.execute(() ->
+		{
+			ClanApi.Result<List<Clan>> result = clanApi.directory(config.serverUrl(), hubQuery);
+
+			SwingUtilities.invokeLater(() ->
+			{
+				if (!result.ok())
+				{
+					showOffline(result.getError());
+					return;
+				}
+
+				showHubWith(result.getValue());
+			});
+		});
+	}
+
+	private void showHubWith(List<Clan> listing)
+	{
+		JPanel screen = new JPanel();
+		screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+		screen.setBackground(Theme.BACKGROUND);
+		screen.add(nav());
+		screen.add(Cards.gap(12));
+		screen.add(new ClanHubPanel(listing, this::showHub, this::lookUpClan, this::applyTo,
+			() -> showHub(hubQuery)));
+
+		show(screen);
+	}
+
+	/** One clan by its code, listed or not, shown the same way the hub shows any other. */
+	private void lookUpClan(String code)
+	{
+		busy("Looking up " + code + "…");
+		executor.execute(() ->
+		{
+			ClanApi.Result<ClanApi.Session> result = clanApi.read(config.serverUrl(), code, null);
+
+			SwingUtilities.invokeLater(() ->
+			{
+				if (!result.ok())
+				{
+					showHubWith(Collections.<Clan>emptyList());
+					Cards.warn(this, result.getError());
+					return;
+				}
+
+				showHubWith(Collections.singletonList(result.getValue().getClan()));
+			});
+		});
+	}
+
+	private void applyTo(Clan clan)
+	{
+		String rsn = playerName.get();
+		if (rsn == null)
+		{
+			Cards.warn(this, "Log in first — you apply under your own name.");
+			return;
+		}
+
+		if (clans.isInAClan())
+		{
+			Cards.warn(this, "You are already in " + clans.membership().getName()
+				+ ". Leave it before applying somewhere else.");
+			return;
+		}
+
+		String message = JOptionPane.showInputDialog(this,
+			"Anything to tell " + clan.getName() + "? (optional)", "Apply to " + clan.getName(),
+			JOptionPane.PLAIN_MESSAGE);
+
+		if (message == null)
+		{
+			return;
+		}
+
+		busy("Applying to " + clan.getName() + "…");
+		executor.execute(() ->
+		{
+			ClanApi.Result<Boolean> result =
+				clanApi.apply(config.serverUrl(), clan.getCode(), rsn, message);
+
+			SwingUtilities.invokeLater(() ->
+			{
+				showHub(hubQuery);
+
+				Cards.warn(this, result.ok()
+					? "Applied to " + clan.getName() + ". Their staff will decide, and you will be in "
+						+ "the clan here once they accept."
+					: result.getError());
+			});
+		});
+	}
+
+	/** When the service cannot be reached at all, which is not the same as having no clan. */
+	private void showOffline(String error)
+	{
+		JPanel screen = new JPanel();
+		screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+		screen.setBackground(Theme.BACKGROUND);
+		screen.add(nav());
+		screen.add(Cards.gap(12));
+		screen.add(Cards.warning(error == null ? "Could not reach the server" : error));
+		screen.add(Cards.gap(8));
+
+		JButton again = Cards.button("Try again");
+		again.addActionListener(event -> showMyClan());
+		screen.add(again);
+
+		show(screen);
+	}
+
 	private void show(JPanel screen)
 	{
 		content.removeAll();
@@ -261,9 +690,14 @@ public class ClanSuitePanel extends PluginPanel
 
 	private void showList()
 	{
+		section = 2;
+
 		ListView list = new ListView();
 		list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
 		list.setBackground(Theme.BACKGROUND);
+
+		list.add(nav());
+		list.add(Cards.gap(12));
 
 		JLabel heading = new JLabel("BOSS OF THE WEEK");
 		heading.setFont(Theme.title());

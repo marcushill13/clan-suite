@@ -17,6 +17,8 @@
  * every score be recomputed when the creator inevitably fixes a points value mid-week.
  */
 
+import { clanRoutes } from './clans.js';
+
 /** Codes people read aloud in Discord, so no O/0 or I/1. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 6;
@@ -79,6 +81,14 @@ async function route(request, env)
 	if (request.method === 'OPTIONS')
 	{
 		return withCors(new Response(null, { status: 204 }));
+	}
+
+	// Clans, their members and their applications live in their own module; everything below this is
+	// Boss of the Week, untouched, and stays reachable exactly as it was.
+	const clan = await clanRoutes(request, env, path, { json, readJson, randomToken, randomCode });
+	if (clan)
+	{
+		return withCors(clan);
 	}
 
 	if (path === '/v1/challenges' && request.method === 'POST')
@@ -1037,7 +1047,7 @@ function json(body, status = 200)
 function withCors(response)
 {
 	response.headers.set('Access-Control-Allow-Origin', '*');
-	response.headers.set('Access-Control-Allow-Headers', 'Content-Type, X-Participant-Token, X-Creator-Token');
-	response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+	response.headers.set('Access-Control-Allow-Headers', 'Content-Type, X-Participant-Token, X-Creator-Token, X-Clan-Token');
+	response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
 	return response;
 }

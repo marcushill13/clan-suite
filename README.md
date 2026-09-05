@@ -18,6 +18,26 @@ switching over keeps everything you had joined. Run one or the other, though: tw
 watching your kills would report each one twice, and the service has no way to tell that the second
 report was the same kill.
 
+# Clans
+
+A clan is what everything else belongs to. Make one and you own it; the people in it have ranks, and
+what somebody may do is decided by their rank rather than by who made what.
+
+**Ranks**, named the way the game names them. Owner and deputy owner run the clan itself — settings,
+and who holds which rank. Administrators run the events and the membership. Moderators check results.
+Members take part and read everything.
+
+**The hub** lists clans that have chosen to be listed, with how full each one is against the game's own
+cap of five hundred. Apply from there and the clan's staff decide. A clan can hide itself from the list
+and still recruit by passing its code around, and can close applications without hiding.
+
+Two things worth being straight about. Nothing here can prove that somebody is who they say they are —
+the plugin reports the name of whoever is logged in, and a modified client could report anything. That
+is why joining is by application: a human who knows the clan approves each one, which is the check a
+clan already makes. And what a rank allows is enforced by the service, not by the plugin. The panel
+hides buttons you could not use, but hiding a button is not a permission — every action is checked
+again where it cannot be edited.
+
 # Boss of the Week
 
 ## Setting one up
@@ -97,6 +117,7 @@ would rather run its own can deploy it and change the address in the plugin's se
 - `com.clansuite` — the plugin itself, its settings, and where files are written
 - `com.clansuite.ui` — the sidebar and the shared look: colours, fonts, cards, buttons
 - `com.clansuite.capture` — screenshots, which every event type will want
+- `com.clansuite.clan` — clans, ranks, the hub and applications
 - `com.clansuite.botw` — Boss of the Week: its data, its tracker, its screens, its service calls
 
 Anything under `botw` belongs to that one event. Everything above it is meant to be shared by every

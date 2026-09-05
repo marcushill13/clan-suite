@@ -2,6 +2,7 @@ package com.clansuite;
 
 import com.clansuite.botw.net.BotwApi;
 import com.clansuite.botw.track.ChallengeStore;
+import com.clansuite.clan.ClanStore;
 import com.clansuite.botw.track.EventSender;
 import com.clansuite.botw.track.KillTracker;
 import com.clansuite.botw.track.Outbox;
@@ -43,6 +44,9 @@ public class ClanSuitePlugin extends Plugin
 
 	@Inject
 	private ChallengeStore challenges;
+
+	@Inject
+	private ClanStore clans;
 
 	@Inject
 	private Outbox outbox;
@@ -87,6 +91,7 @@ public class ClanSuitePlugin extends Plugin
 		eventBus.register(killTracker);
 
 		challenges.load();
+		clans.load();
 		outbox.load();
 
 		panel.setPlayerName(this::localPlayerName);
@@ -159,9 +164,11 @@ public class ClanSuitePlugin extends Plugin
 			return;
 		}
 
-		// Both are stored per account, so they cannot be read until there is an account to read them
-		// for. Logging in on a second character has to swap them over, not merge them.
+		// All three are stored per account, so they cannot be read until there is an account to read
+		// them for. Logging in on a second character has to swap them over, not merge them — an
+		// ironman and a main can be in different clans, and usually are.
 		challenges.load();
+		clans.load();
 		outbox.load();
 
 		// And the panel has to be told. It is built at start-up, before there is an account, so without
