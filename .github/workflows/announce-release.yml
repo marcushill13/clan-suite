@@ -10,12 +10,17 @@
 # workflow and nobody but GitHub and Discord ever sees it.
 name: Announce release
 
+# Not on a timer yet, and deliberately.
+#
+# This watches the hub's manifest for the commit it is serving, and Clan Suite is not on the hub: there
+# is no manifest to read and no webhook secret to post with, so every half-hourly run failed and mailed
+# somebody about it. Put the schedule back when the plugin is accepted — the cron that was here is
+#
+#   - cron: '9,39 * * * *'
+#
+# deliberately off the hour, because GitHub queues scheduled runs and drops them under load, and :00
+# and :30 are the two most contended minutes there are.
 on:
-  schedule:
-    # Twice an hour, deliberately off the hour. GitHub queues scheduled runs and drops them under
-    # load, and :00 and :30 are the two most contended minutes there are — the first release this
-    # watched merged at 12:14 and the run booked for 12:00 never happened at all.
-    - cron: '9,39 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -47,7 +52,7 @@ jobs:
 
       - id: announce
         env:
-          PLUGIN: botw
+          PLUGIN: clan-suite
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           # A scheduled run is the real thing; a hand-started one defaults to a rehearsal.
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
