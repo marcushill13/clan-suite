@@ -50,6 +50,12 @@ export async function eventRoutes(request, env, path, helpers)
 		return listEvents(forClan[1].toUpperCase(), request, env, json);
 	}
 
+	const calendar = path.match(/^\/v1\/clans\/([A-Za-z0-9]+)\/calendar$/);
+	if (calendar && request.method === 'POST')
+	{
+		return postCalendar(calendar[1].toUpperCase(), request, env, helpers);
+	}
+
 	const observations = path.match(/^\/v1\/events\/([A-Za-z0-9]+)\/observations$/);
 	if (observations && request.method === 'POST')
 	{
@@ -1001,4 +1007,67 @@ export async function announceDue(env, now = Date.now())
 		await env.DB.prepare('UPDATE clan_events SET announced_end = 1 WHERE code = ?')
 			.bind(event.code).run();
 	}
+}
+
+/** About 1.5MB of picture, which is far more than a month of events comes to. */
+const MAX_CALENDAR_CHARS = 2_000_000;
+
+/**
+ * Puts the month's picture in the clan's Discord.
+ *
+ * Drawn in the plugin, because a Cloudflare Worker has no drawing library and the person who wants the
+ * picture is sitting in front of a client that does. Sent through here rather than straight from that
+ * client for the same reason everything else is: the webhook address belongs to the clan, and handing
+ * it to five hundred plugins would mean anybody in the clan could post as the clan for ever.
+ */
+async function postCalendar(clanCode, request, env, { json, readJson })
+{
+	const me = await memberFor(clanCode, request, env);
+	if (!me || !can(me.role, 'EVENT_MANAGE'))
+	{
+		return json({ error: 'You cannot post the calendar for this clan' }, 403);
+	}
+
+	const body = await readJson(request);
+	const image = String(body?.image ?? '');
+
+	if (!image)
+	{
+		return json({ error: 'A picture is required' }, 400);
+	}
+
+	if (image.length > MAX_CALENDAR_CHARS)
+	{
+		return json({ error: 'That picture is too large to post' }, 400);
+	}
+
+	const clan = await env.DB.prepare('SELECT * FROM clans WHERE code = ?').bind(clanCode).first();
+	if (!clan?.webhook_url)
+	{
+		return json({ error: 'This clan has no Discord to post to' }, 400);
+	}
+
+	let bytes;
+	try
+	{
+		const binary = atob(image);
+		bytes = new Uint8Array(binary.length);
+		for (let i = 0; i < binary.length; i++)
+		{
+			bytes[i] = binary.charCodeAt(i);
+		}
+	}
+	catch
+	{
+		return json({ error: 'That picture could not be read' }, 400);
+	}
+
+	const month = String(body?.month ?? '').trim().slice(0, 40);
+	const sent = await discord.postImage(
+		clan.webhook_url, bytes, 'calendar.png',
+		month ? `**${clan.name} — ${month}**` : `**${clan.name}**`);
+
+	return sent
+		? json({ ok: true })
+		: json({ error: 'Discord would not take it' }, 502);
 }

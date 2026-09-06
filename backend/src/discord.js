@@ -74,6 +74,42 @@ export async function post(url, body)
 	}
 }
 
+/**
+ * Sends a picture.
+ *
+ * Discord takes an image as multipart rather than as JSON, which is the only reason this is separate
+ * from everything else here. Same rule about failing: whatever is wrong with somebody's webhook is not
+ * worth failing the request that carried the picture.
+ */
+export async function postImage(url, bytes, filename, content)
+{
+	if (!isWebhook(url))
+	{
+		return false;
+	}
+
+	try
+	{
+		const form = new FormData();
+		form.append('payload_json', JSON.stringify({ content }));
+		form.append('files[0]', new File([bytes], filename, { type: 'image/png' }), filename);
+
+		const response = await fetch(url, { method: 'POST', body: form });
+
+		if (!response.ok)
+		{
+			console.log(`Discord refused a picture: ${response.status}`);
+		}
+
+		return response.ok;
+	}
+	catch (error)
+	{
+		console.log(`Could not send a picture to Discord: ${error}`);
+		return false;
+	}
+}
+
 /** An event has been put on the calendar. */
 export function announcement(event, clan)
 {

@@ -40,7 +40,8 @@ public class EventListPanel extends JPanel
 		Runnable onCreate,
 		Consumer<ClanEvent> onOpen,
 		Runnable onRefresh,
-		Runnable onBossOfTheWeek)
+		Runnable onBossOfTheWeek,
+		Runnable onCalendar)
 	{
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		setBackground(Theme.BACKGROUND);
@@ -76,9 +77,14 @@ public class EventListPanel extends JPanel
 		if (canManage)
 		{
 			add(Cards.gap(10));
+
 			JButton create = Cards.button("Create event");
 			create.addActionListener(event -> onCreate.run());
-			add(inRow(create));
+
+			JButton calendar = Cards.button("Month's picture");
+			calendar.addActionListener(event -> onCalendar.run());
+
+			add(inRow(create, calendar));
 		}
 
 		add(Cards.gap(14));
@@ -208,9 +214,14 @@ public class EventListPanel extends JPanel
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
 
-		for (Component part : parts)
+		for (int i = 0; i < parts.length; i++)
 		{
-			row.add(part);
+			if (i > 0)
+			{
+				row.add(javax.swing.Box.createHorizontalStrut(6));
+			}
+
+			row.add(parts[i]);
 		}
 
 		return row;

@@ -24,6 +24,8 @@ import com.clansuite.clan.data.PlayerStatistics;
 import com.clansuite.clan.ui.MyClanPanel;
 import com.clansuite.clan.ui.RecordsPanel;
 import com.clansuite.event.data.ClanEvent;
+import com.clansuite.event.calendar.CalendarFile;
+import com.clansuite.event.calendar.CalendarImage;
 import com.clansuite.event.data.EventPresets;
 import com.clansuite.event.net.EventApi;
 import com.clansuite.event.ui.CreateEventPanel;
@@ -31,6 +33,12 @@ import com.clansuite.event.data.EventParticipant;
 import com.clansuite.event.ui.EventListPanel;
 import com.clansuite.event.ui.EventView;
 import java.awt.BorderLayout;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.format.TextStyle;
+import java.util.Locale;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.util.ArrayList;
@@ -604,7 +612,8 @@ public class ClanSuitePanel extends PluginPanel
 				screen.add(backTo("Back to clan", this::showMyClan));
 				screen.add(Cards.gap(10));
 				screen.add(new EventListPanel(events.getValue(), canManage, this::showCreateEvent,
-					event -> openEvent(event, canManage), this::showEvents, this::showList));
+					event -> openEvent(event, canManage), this::showEvents, this::showList,
+					() -> makeCalendar(events.getValue())));
 
 				show(screen);
 			});
@@ -662,6 +671,80 @@ public class ClanSuitePanel extends PluginPanel
 					this::showMyClan));
 
 				show(screen);
+			});
+		});
+	}
+
+	/**
+	 * The month's picture: drawn from the calendar that is already on screen, saved to the player's own
+	 * machine, and posted to the clan's Discord if they want it there.
+	 * <p>
+	 * Saved either way. A clan that puts its calendar somewhere this plugin has never heard of should
+	 * still get the file.
+	 */
+	private void makeCalendar(List<ClanEvent> events)
+	{
+		ClanStore.Membership mine = clans.membership();
+		if (mine == null)
+		{
+			return;
+		}
+
+		String[] months = {"This month", "Next month"};
+		int chosen = JOptionPane.showOptionDialog(this,
+			"Which month?", "Month's picture",
+			JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, months, months[0]);
+
+		if (chosen < 0)
+		{
+			return;
+		}
+
+		ZoneId zone = ZoneId.systemDefault();
+		YearMonth month = YearMonth.now(zone).plusMonths(chosen);
+
+		BufferedImage picture = CalendarImage.of(mine.getName(), month, events, zone);
+		File saved = CalendarFile.save(picture, mine.getName(), month);
+
+		String written = month.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH)
+			+ " " + month.getYear();
+
+		if (saved == null)
+		{
+			Cards.warn(this, "Could not write the picture. Check there is room on the disk.");
+			return;
+		}
+
+		int post = JOptionPane.showConfirmDialog(this,
+			"Saved to " + saved.getName() + ".\n\nPost it to the clan's Discord?",
+			written, JOptionPane.YES_NO_OPTION);
+
+		if (post != JOptionPane.YES_OPTION)
+		{
+			Cards.warn(this, "Saved under .runelite/clansuite/calendars.");
+			return;
+		}
+
+		String encoded = CalendarFile.encode(picture);
+		if (encoded == null)
+		{
+			Cards.warn(this, "The picture was saved, but could not be prepared for Discord.");
+			return;
+		}
+
+		busy("Posting " + written + "…");
+		executor.execute(() ->
+		{
+			ClanApi.Result<Boolean> result = clanApi.postCalendar(
+				config.serverUrl(), mine.getCode(), mine.getToken(), written, encoded);
+
+			SwingUtilities.invokeLater(() ->
+			{
+				showEvents();
+
+				Cards.warn(this, result.ok()
+					? written + " is in your Discord."
+					: result.getError());
 			});
 		});
 	}

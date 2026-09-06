@@ -87,6 +87,23 @@ person rather than tracked, because nothing a game client can see proves anybody
 and seek. Damage and contribution in group content are not tracked either — the client is not told
 enough to be honest about them. Boss of the Week tracks as it always has, on its own screens.
 
+# The month's picture
+
+A clan posts a calendar at the start of every month, and somebody makes it by hand in a drawing
+program from a list they typed into Discord. The events are already here, with their dates and their
+colours, so Clan Suite draws it instead — one press, and it is a picture of the month.
+
+Drawn in the plugin, because Java has a drawing library and a Cloudflare Worker does not, and because
+whoever wants the picture is sitting in front of a client that does. It is saved to your own machine
+either way, so a clan that posts its calendar somewhere else entirely still gets the file.
+
+Posting it to Discord goes through the service rather than straight from the plugin, for the same
+reason every other announcement does: the webhook address belongs to the clan, and handing it to five
+hundred plugins would mean anybody in it could post as the clan for ever, including after they left.
+
+Cancelled events stay on the picture. The clan told everybody it was on, and a calendar that quietly
+loses it is how people turn up to nothing.
+
 # Records
 
 Every event ends and stops being interesting within the week. What a clan argues about a year later is

@@ -52,7 +52,7 @@ public final class Theme
 	public static final Color SKILLING = new Color(226, 130, 82);
 	public static final Color PVM = new Color(86, 190, 200);
 	public static final Color RAIDS = new Color(140, 196, 76);
-	public static final Color MINIGAME = new Color(196, 150, 96);
+	public static final Color MINIGAME = new Color(152, 142, 206);
 	public static final Color CLUE = new Color(214, 186, 140);
 	public static final Color SOCIAL = new Color(212, 196, 110);
 	public static final Color SPECIAL = new Color(214, 122, 180);

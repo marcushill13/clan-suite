@@ -219,6 +219,27 @@ public class ClanApi
 		});
 	}
 
+	/**
+	 * Puts the month's picture in the clan's Discord.
+	 * <p>
+	 * Sent through the service rather than straight to Discord because the webhook address belongs to
+	 * the clan: handing it to every plugin would mean anybody in the clan could post as the clan for
+	 * ever, including after they left it.
+	 *
+	 * @param png the picture, base64 encoded, as the screenshots are
+	 */
+	public Result<Boolean> postCalendar(
+		String baseUrl, String code, String token, String month, String png)
+	{
+		JsonObject body = new JsonObject();
+		body.addProperty("month", month);
+		body.addProperty("image", png);
+
+		return send(authorised(new Request.Builder()
+			.url(url(baseUrl, "v1", "clans", code, "calendar"))
+			.post(RequestBody.create(JSON, gson.toJson(body))), token), text -> Boolean.TRUE);
+	}
+
 	/** The clan's permanent records — the things people argue about a year later. */
 	public Result<List<ClanRecord>> records(String baseUrl, String code, String token)
 	{

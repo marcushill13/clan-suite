@@ -27,8 +27,15 @@ const posted = [];
 
 globalThis.fetch = async (url, options) =>
 {
+	// A picture goes as multipart and everything else as JSON; the tests want to read both.
+	if (options.body instanceof FormData)
+	{
+		globalThis.__lastCalendarPost = { url, body: options.body };
+		return new Response(null, { status: 204 });
+	}
+
 	posted.push({ url, body: JSON.parse(options.body) });
-	return new Response('{}', { status: 204 });
+	return new Response(null, { status: 204 });
 };
 
 function said()
@@ -327,4 +334,68 @@ test('Discord being broken costs nobody a point', async () =>
 		globalThis.fetch = working;
 		posted.length = 0;
 	}
+});
+
+test('the month\'s picture goes to Discord as a file', async () =>
+{
+	const env = { DB: database() };
+	const at = await clanWithDiscord(env);
+
+	// A one-pixel PNG is enough: what matters is how it is sent, not what is in it.
+	const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+	const posted = await call(env, 'POST', `/v1/clans/${at.clan.code}/calendar`,
+		{ body: { month: 'September 2026', image: png }, token: at.clan.token });
+
+	assert.equal(posted.status, 200);
+
+	// Sent as multipart with a file on it, which is the only way Discord takes a picture.
+	const sent = globalThis.__lastCalendarPost;
+	assert.ok(sent, 'nothing was sent');
+	assert.ok(sent.body instanceof FormData);
+	assert.ok(sent.body.get('files[0]'), 'no file attached');
+	assert.match(String(sent.body.get('payload_json')), /September 2026/);
+	assert.match(String(sent.body.get('payload_json')), /OCE Plankers/);
+});
+
+test('only the people who run events can post the calendar', async () =>
+{
+	const env = { DB: database() };
+	const at = await clanWithDiscord(env);
+	const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+	assert.equal((await call(env, 'POST', `/v1/clans/${at.clan.code}/calendar`,
+		{ body: { image: png }, token: at.player })).status, 403);
+
+	assert.equal((await call(env, 'POST', `/v1/clans/${at.clan.code}/calendar`,
+		{ body: { image: png } })).status, 403);
+});
+
+test('a clan with no Discord is told so rather than left wondering', async () =>
+{
+	const env = { DB: database() };
+	const at = await clanWithDiscord(env);
+	await call(env, 'PATCH', `/v1/clans/${at.clan.code}`,
+		{ body: { discordWebhook: '' }, token: at.clan.token });
+
+	const refused = await call(env, 'POST', `/v1/clans/${at.clan.code}/calendar`,
+		{ body: { image: 'aGVsbG8=' }, token: at.clan.token });
+
+	assert.equal(refused.status, 400);
+	assert.match(refused.body.error, /no Discord/);
+});
+
+test('a picture that is not one, or is enormous, is refused', async () =>
+{
+	const env = { DB: database() };
+	const at = await clanWithDiscord(env);
+
+	assert.equal((await call(env, 'POST', `/v1/clans/${at.clan.code}/calendar`,
+		{ body: {}, token: at.clan.token })).status, 400);
+
+	assert.equal((await call(env, 'POST', `/v1/clans/${at.clan.code}/calendar`,
+		{ body: { image: 'not base64 at all !!!' }, token: at.clan.token })).status, 400);
+
+	assert.equal((await call(env, 'POST', `/v1/clans/${at.clan.code}/calendar`,
+		{ body: { image: 'A'.repeat(2_000_001) }, token: at.clan.token })).status, 400);
 });

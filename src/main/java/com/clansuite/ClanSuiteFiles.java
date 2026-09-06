@@ -17,7 +17,7 @@ import net.runelite.client.RuneLite;
 public final class ClanSuiteFiles
 {
 	/** Named for the plugin as the hub knows it, so the folder is identifiable from the outside. */
-	private static final File ROOT = new File(RuneLite.RUNELITE_DIR, "botw");
+	private static final File ROOT = new File(RuneLite.RUNELITE_DIR, "clansuite");
 
 	private ClanSuiteFiles()
 	{
@@ -35,6 +35,12 @@ public final class ClanSuiteFiles
 	}
 
 	/** Where an evidence export lands. */
+	/** The month's calendar pictures, one file per month, named so they sort in order. */
+	public static File calendars()
+	{
+		return new File(ROOT, "calendars");
+	}
+
 	public static File exports()
 	{
 		return new File(ROOT, "exports");
