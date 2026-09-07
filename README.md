@@ -225,6 +225,21 @@ would rather run its own can deploy it and change the address in the plugin's se
 Anything under `botw` belongs to that one event. Everything above it is meant to be shared by every
 event that follows, which is why the split exists at all.
 
+### Building it
+
+`gradlew run` builds the plugin and starts a developer client with it loaded.
+
+RuneLite pins Gson 2.8.5 and the plugin gets it transitively, so anything added after that version is
+not available here however new the Gson on your machine is. `JsonParser.parseString` is the one that
+catches people out; use `JsonObject.addProperty` or `new JsonPrimitive(...)` instead.
+
+To log in with a Jagex account, the developer client cannot show the launcher's login flow, so hand it
+a session instead. Run "RuneLite (configure)" from the Start Menu, put `--insecure-write-credentials`
+in the client arguments, save, then start RuneLite through the Jagex Launcher and log in as normal.
+That writes `.runelite/credentials.properties`, which the developer client reads on its next start.
+Take the argument back out afterwards, and do not share or commit that file: it logs into the account
+without the password. Deleting it is enough to stop it working.
+
 ## Honest about cheating
 
 This is trust based, in the same way that screenshots posted to Discord are trust based.

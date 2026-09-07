@@ -3,7 +3,6 @@ package com.clansuite.event.track;
 import com.clansuite.event.data.ClanEvent;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.junit.Test;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -50,7 +49,7 @@ public class JoinedEventsTest
 	{
 		ClanEvent odd = new ClanEvent();
 		JsonObject config = new JsonObject();
-		config.add("track", JsonParser.parseString("\"kc\""));
+		config.addProperty("track", "kc");
 		odd.setConfig(config);
 
 		assertTrue(JoinedEvents.tracks(odd, "kc"));
