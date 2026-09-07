@@ -40,6 +40,6 @@ public interface ClanSuiteConfig extends Config
 	)
 	default String serverUrl()
 	{
-		return "https://botw.marcushill3313.workers.dev";
+		return "https://clan-suite.marcushill3313.workers.dev";
 	}
 }

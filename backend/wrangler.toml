@@ -1,4 +1,4 @@
-name = "botw"
+name = "clan-suite"
 main = "src/index.js"
 compatibility_date = "2026-01-01"
 
@@ -10,8 +10,17 @@ compatibility_date = "2026-01-01"
 # results just after they finish, which is only worth doing at about the granularity people notice.
 crons = ["0 4 * * *", "*/5 * * * *"]
 
-# Created with `wrangler d1 create botw`. The id comes from `wrangler d1 list` if it is ever lost.
+# Clan Suite gets its own worker and its own database, deliberately.
+#
+# Boss of the Week is a separate, published plugin with players using it right now, and it runs from
+# the `botw` worker against the `botw` database. Deploying this on top of those would replace a live
+# service and migrate a live database out from under it. Clan Suite carries its own copy of the Boss
+# of the Week tables instead, because it includes that event type.
+#
+# Created with `wrangler d1 create clan-suite`; put the id it prints below. `wrangler d1 list` has it
+# if it is ever lost. Set up a new database with `wrangler d1 execute clan-suite --remote --file
+# ./schema.sql`, which is complete on its own and safe to re-run.
 [[d1_databases]]
 binding = "DB"
-database_name = "botw"
-database_id = "804be076-0326-40bf-84bd-a24f958ac48d"
+database_name = "clan-suite"
+database_id = "REPLACE-ME-WITH-THE-ID-FROM-wrangler-d1-create-clan-suite"

@@ -1,8 +1,13 @@
-# Boss of the Week — the shared service
+# Clan Suite — the shared service
 
 A RuneLite plugin only ever sees its own client. A leaderboard across a clan needs somewhere for
-everyone's points to meet, and this is it: create a challenge, join it with a code, report what you
-killed, read what everyone has.
+everyone's points to meet, and this is it: make a clan, run events in it, report what happened, read
+what everyone has.
+
+This is **not** the Boss of the Week service. That plugin is published and in use, and it runs from
+the `botw` worker against the `botw` database. This one has its own worker and its own database, and
+carries its own copy of the Boss of the Week tables, because Boss of the Week is one of the event
+types it offers. Deploying this over the top of that one would replace a live service.
 
 It is a Cloudflare Worker with a D1 database behind it. At a clan's scale that sits inside the free
 tier with room to spare — a hundred people killing a boss all week is a few thousand rows.
@@ -17,21 +22,26 @@ wrangler login
 ```
 
 ```bash
-cd backend && wrangler d1 create botw
+cd backend && wrangler d1 create clan-suite
 ```
 
 That prints a `database_id`. Paste it into `wrangler.toml`, replacing the placeholder, then create the
 tables and deploy:
 
 ```bash
-cd backend && wrangler d1 execute botw --remote --file=./schema.sql
+cd backend && wrangler d1 execute clan-suite --remote --file=./schema.sql
 ```
 
 ```bash
 cd backend && wrangler deploy
 ```
 
-Deployed at **https://botw.marcushill3313.workers.dev** — that is the URL the plugin talks to.
+Deployed at **https://clan-suite.marcushill3313.workers.dev** — that is the URL the plugin talks to,
+and the default in the plugin's settings.
+
+`schema.sql` is the whole database and every statement in it is `IF NOT EXISTS`, so running it against
+a new database sets it up and running it again changes nothing. The files in `migrations/` are there
+for a database that already holds data and needs bringing forward; a fresh one does not need them.
 
 ## What it does
 
