@@ -1,5 +1,6 @@
 package com.clansuite.botw.track;
 
+import com.clansuite.ServiceUrl;
 import com.clansuite.ClanSuiteConfig;
 import com.clansuite.botw.net.BotwApi;
 import java.util.List;
@@ -160,7 +161,7 @@ public class EventSender
 				}
 
 				BotwApi.Result<BotwApi.Snapshot> result =
-					api.submit(config.serverUrl(), code, token, batch.getValue());
+					api.submit(ServiceUrl.of(config.serverUrl()), code, token, batch.getValue());
 
 				if (result.isGone())
 				{

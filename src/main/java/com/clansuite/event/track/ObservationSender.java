@@ -1,5 +1,6 @@
 package com.clansuite.event.track;
 
+import com.clansuite.ServiceUrl;
 import com.clansuite.ClanSuiteConfig;
 import com.clansuite.clan.ClanStore;
 import com.clansuite.event.net.EventApi;
@@ -156,7 +157,7 @@ public class ObservationSender
 			for (Map.Entry<String, List<Observation>> batch : outbox.nextBatch().entrySet())
 			{
 				EventApi.Result<Integer> result =
-					api.report(config.serverUrl(), batch.getKey(), mine.getToken(), batch.getValue());
+					api.report(ServiceUrl.of(config.serverUrl()), batch.getKey(), mine.getToken(), batch.getValue());
 
 				if (result.isGone())
 				{

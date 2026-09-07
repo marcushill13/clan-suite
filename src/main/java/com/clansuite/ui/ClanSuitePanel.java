@@ -1,5 +1,6 @@
 package com.clansuite.ui;
 
+import com.clansuite.ServiceUrl;
 import com.clansuite.ClanSuiteConfig;
 import com.clansuite.botw.data.BossDrops;
 import com.clansuite.botw.data.Challenge;
@@ -201,7 +202,7 @@ public class ClanSuitePanel extends PluginPanel
 
 			executor.execute(() ->
 			{
-				BotwApi.Result<BotwApi.Snapshot> result = api.read(config.serverUrl(), code);
+				BotwApi.Result<BotwApi.Snapshot> result = api.read(ServiceUrl.of(config.serverUrl()), code);
 				if (!result.ok())
 				{
 					// Silent on purpose. This runs on a timer nobody asked for, and a warning box every
@@ -269,7 +270,7 @@ public class ClanSuitePanel extends PluginPanel
 			List<Challenge> fresh = new ArrayList<>();
 			for (String code : codes)
 			{
-				BotwApi.Result<BotwApi.Snapshot> result = api.read(config.serverUrl(), code);
+				BotwApi.Result<BotwApi.Snapshot> result = api.read(ServiceUrl.of(config.serverUrl()), code);
 
 				// A challenge that cannot be reached is left exactly as it was. A moment without a
 				// network is not evidence that a challenge is gone, and dropping it would take the
@@ -390,7 +391,7 @@ public class ClanSuitePanel extends PluginPanel
 		executor.execute(() ->
 		{
 			ClanApi.Result<ClanApi.Session> clan =
-				clanApi.read(config.serverUrl(), mine.getCode(), mine.getToken());
+				clanApi.read(ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken());
 
 			if (!clan.ok())
 			{
@@ -412,7 +413,7 @@ public class ClanSuitePanel extends PluginPanel
 			}
 
 			ClanApi.Result<ClanApi.Roster> roster =
-				clanApi.members(config.serverUrl(), mine.getCode(), mine.getToken());
+				clanApi.members(ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken());
 
 			ClanApi.Session session = clan.getValue();
 			List<ClanApplication> waiting = session.can(Capability.MEMBER_MANAGE)
@@ -446,7 +447,7 @@ public class ClanSuitePanel extends PluginPanel
 	private List<ClanApplication> applicationsFor(ClanStore.Membership mine)
 	{
 		ClanApi.Result<List<ClanApplication>> result =
-			clanApi.applications(config.serverUrl(), mine.getCode(), mine.getToken());
+			clanApi.applications(ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken());
 
 		return result.ok() ? result.getValue() : Collections.<ClanApplication>emptyList();
 	}
@@ -458,7 +459,7 @@ public class ClanSuitePanel extends PluginPanel
 	 */
 	private MyClanPanel.Actions clanActions(ClanStore.Membership mine)
 	{
-		String url = config.serverUrl();
+		String url = ServiceUrl.of(config.serverUrl());
 		String code = mine.getCode();
 		String token = mine.getToken();
 
@@ -590,9 +591,9 @@ public class ClanSuitePanel extends PluginPanel
 		executor.execute(() ->
 		{
 			ClanApi.Result<ClanApi.Session> clan =
-				clanApi.read(config.serverUrl(), mine.getCode(), mine.getToken());
+				clanApi.read(ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken());
 			EventApi.Result<List<ClanEvent>> events =
-				eventApi.forClan(config.serverUrl(), mine.getCode(), mine.getToken());
+				eventApi.forClan(ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken());
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -643,12 +644,12 @@ public class ClanSuitePanel extends PluginPanel
 		executor.execute(() ->
 		{
 			ClanApi.Result<List<ClanRecord>> records =
-				clanApi.records(config.serverUrl(), mine.getCode(), mine.getToken());
+				clanApi.records(ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken());
 			ClanApi.Result<ClanStatistics> statistics =
-				clanApi.statistics(config.serverUrl(), mine.getCode(), mine.getToken());
+				clanApi.statistics(ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken());
 			ClanApi.Result<PlayerStatistics> yours = rsn == null
 				? null
-				: clanApi.statisticsFor(config.serverUrl(), mine.getCode(), mine.getToken(), rsn);
+				: clanApi.statisticsFor(ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken(), rsn);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -736,7 +737,7 @@ public class ClanSuitePanel extends PluginPanel
 		executor.execute(() ->
 		{
 			ClanApi.Result<Boolean> result = clanApi.postCalendar(
-				config.serverUrl(), mine.getCode(), mine.getToken(), written, encoded);
+				ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken(), written, encoded);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -771,7 +772,7 @@ public class ClanSuitePanel extends PluginPanel
 		executor.execute(() ->
 		{
 			EventApi.Result<ClanEvent> result =
-				eventApi.create(config.serverUrl(), mine.getCode(), mine.getToken(), event);
+				eventApi.create(ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken(), event);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -811,9 +812,9 @@ public class ClanSuitePanel extends PluginPanel
 		executor.execute(() ->
 		{
 			EventApi.Result<List<EventParticipant>> taking =
-				eventApi.participants(config.serverUrl(), event.getCode(), mine.getToken());
+				eventApi.participants(ServiceUrl.of(config.serverUrl()), event.getCode(), mine.getToken());
 			ClanApi.Result<ClanApi.Session> clan =
-				clanApi.read(config.serverUrl(), mine.getCode(), mine.getToken());
+				clanApi.read(ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken());
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -843,7 +844,7 @@ public class ClanSuitePanel extends PluginPanel
 
 	private EventView.Actions eventActions(ClanEvent event, boolean canManage)
 	{
-		String url = config.serverUrl();
+		String url = ServiceUrl.of(config.serverUrl());
 		String code = event.getCode();
 		String token = clans.membership() == null ? null : clans.membership().getToken();
 
@@ -919,7 +920,7 @@ public class ClanSuitePanel extends PluginPanel
 		executor.execute(() ->
 		{
 			EventApi.Result<ClanEvent> result =
-				eventApi.setStatus(config.serverUrl(), event.getCode(), mine.getToken(), status);
+				eventApi.setStatus(ServiceUrl.of(config.serverUrl()), event.getCode(), mine.getToken(), status);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -954,7 +955,7 @@ public class ClanSuitePanel extends PluginPanel
 		busy("Creating " + name + "…");
 		executor.execute(() ->
 		{
-			ClanApi.Result<ClanApi.Session> result = clanApi.create(config.serverUrl(), name, tagline, rsn);
+			ClanApi.Result<ClanApi.Session> result = clanApi.create(ServiceUrl.of(config.serverUrl()), name, tagline, rsn);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -986,7 +987,7 @@ public class ClanSuitePanel extends PluginPanel
 		busy("Reading the clan list…");
 		executor.execute(() ->
 		{
-			ClanApi.Result<List<Clan>> result = clanApi.directory(config.serverUrl(), hubQuery);
+			ClanApi.Result<List<Clan>> result = clanApi.directory(ServiceUrl.of(config.serverUrl()), hubQuery);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -1020,7 +1021,7 @@ public class ClanSuitePanel extends PluginPanel
 		busy("Looking up " + code + "…");
 		executor.execute(() ->
 		{
-			ClanApi.Result<ClanApi.Session> result = clanApi.read(config.serverUrl(), code, null);
+			ClanApi.Result<ClanApi.Session> result = clanApi.read(ServiceUrl.of(config.serverUrl()), code, null);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -1065,7 +1066,7 @@ public class ClanSuitePanel extends PluginPanel
 		executor.execute(() ->
 		{
 			ClanApi.Result<Boolean> result =
-				clanApi.apply(config.serverUrl(), clan.getCode(), rsn, message);
+				clanApi.apply(ServiceUrl.of(config.serverUrl()), clan.getCode(), rsn, message);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -1330,7 +1331,7 @@ public class ClanSuitePanel extends PluginPanel
 		executor.execute(() ->
 		{
 			BotwApi.Result<BotwApi.Snapshot> result =
-				api.update(config.serverUrl(), challenge, token);
+				api.update(ServiceUrl.of(config.serverUrl()), challenge, token);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -1360,7 +1361,7 @@ public class ClanSuitePanel extends PluginPanel
 		busy("Deleting…");
 		executor.execute(() ->
 		{
-			BotwApi.Result<BotwApi.Snapshot> result = api.delete(config.serverUrl(), code, token);
+			BotwApi.Result<BotwApi.Snapshot> result = api.delete(ServiceUrl.of(config.serverUrl()), code, token);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -1392,7 +1393,7 @@ public class ClanSuitePanel extends PluginPanel
 		busy("Creating…");
 		executor.execute(() ->
 		{
-			BotwApi.Result<BotwApi.Snapshot> result = api.create(config.serverUrl(), challenge, rsn);
+			BotwApi.Result<BotwApi.Snapshot> result = api.create(ServiceUrl.of(config.serverUrl()), challenge, rsn);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -1433,7 +1434,7 @@ public class ClanSuitePanel extends PluginPanel
 		busy("Joining…");
 		executor.execute(() ->
 		{
-			BotwApi.Result<BotwApi.Snapshot> result = api.join(config.serverUrl(), code, rsn);
+			BotwApi.Result<BotwApi.Snapshot> result = api.join(ServiceUrl.of(config.serverUrl()), code, rsn);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -1474,7 +1475,7 @@ public class ClanSuitePanel extends PluginPanel
 			// press it again, see the old number.
 			sender.flush();
 
-			BotwApi.Result<BotwApi.Snapshot> result = api.read(config.serverUrl(), code);
+			BotwApi.Result<BotwApi.Snapshot> result = api.read(ServiceUrl.of(config.serverUrl()), code);
 
 			SwingUtilities.invokeLater(() ->
 			{
@@ -1520,7 +1521,7 @@ public class ClanSuitePanel extends PluginPanel
 				JPanel evidence = creatorToken == null
 					? null
 					: new EvidencePanel(code, snapshot.getChallenge().getName(), creatorToken,
-						config.serverUrl(), api, executor, snapshot.getLeaderboard());
+						ServiceUrl.of(config.serverUrl()), api, executor, snapshot.getLeaderboard());
 
 				Challenge open = snapshot.getChallenge();
 				boolean canPreview = !asPlayer && challenges.creatorTokenFor(code) != null;
@@ -1556,7 +1557,7 @@ public class ClanSuitePanel extends PluginPanel
 			public void add(String rsn, int points)
 			{
 				run("Adding " + rsn + "…",
-					() -> api.addParticipant(config.serverUrl(), code, creatorToken, rsn, points));
+					() -> api.addParticipant(ServiceUrl.of(config.serverUrl()), code, creatorToken, rsn, points));
 			}
 
 			@Override
@@ -1572,7 +1573,7 @@ public class ClanSuitePanel extends PluginPanel
 					for (Map.Entry<String, Integer> change : changes.entrySet())
 					{
 						result = api.setPoints(
-							config.serverUrl(), code, creatorToken, change.getKey(), change.getValue());
+							ServiceUrl.of(config.serverUrl()), code, creatorToken, change.getKey(), change.getValue());
 
 						// Stopped at the first refusal, so the creator is told which name failed rather
 						// than being shown the last one's error for all of them.
@@ -1590,7 +1591,7 @@ public class ClanSuitePanel extends PluginPanel
 			public void remove(String rsn)
 			{
 				run("Removing " + rsn + "…",
-					() -> api.removeParticipant(config.serverUrl(), code, creatorToken, rsn));
+					() -> api.removeParticipant(ServiceUrl.of(config.serverUrl()), code, creatorToken, rsn));
 			}
 
 			private void run(String message, Supplier<BotwApi.Result<BotwApi.Snapshot>> call)

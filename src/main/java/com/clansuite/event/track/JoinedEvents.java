@@ -1,5 +1,6 @@
 package com.clansuite.event.track;
 
+import com.clansuite.ServiceUrl;
 import com.clansuite.ClanSuiteConfig;
 import com.clansuite.clan.ClanStore;
 import com.clansuite.event.data.ClanEvent;
@@ -53,7 +54,7 @@ public class JoinedEvents
 		}
 
 		EventApi.Result<List<ClanEvent>> result =
-			api.forClan(config.serverUrl(), mine.getCode(), mine.getToken());
+			api.forClan(ServiceUrl.of(config.serverUrl()), mine.getCode(), mine.getToken());
 
 		if (!result.ok())
 		{

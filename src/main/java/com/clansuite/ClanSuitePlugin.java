@@ -130,7 +130,7 @@ public class ClanSuitePlugin extends Plugin
 			}
 
 			BotwApi.Result<BotwApi.Snapshot> result = api.uploadShot(
-				config.serverUrl(), code, token, eventId, itemName, System.currentTimeMillis(), jpeg);
+				ServiceUrl.of(config.serverUrl()), code, token, eventId, itemName, System.currentTimeMillis(), jpeg);
 
 			if (!result.ok())
 			{
